@@ -1388,7 +1388,7 @@ public final class DBNinja {
 			String toppingName = rs.getString("Topping");
 			int usedCount = rs.getInt("ToppingCount");
 
-			System.out.printf("%-25s %-15d %-15.2f%n", toppingName, usedCount);
+			System.out.printf("%-19s %-15d\n", toppingName, usedCount);
 		}
 
 		// Close resources
@@ -1457,8 +1457,8 @@ public final class DBNinja {
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-20s %-15s %-20s %-20s %-15s%n", "Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
-		System.out.println("%-20s %-15s %-20s %-20s %-15s\n", "-------------", "-----------", "-----------------", "----------------", "------");
+		System.out.printf("%-19s %-19s %-19s %-19s %-19s\n", "Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
+		System.out.printf("%-19s %-19s %-19s %-19s %-19s\n", "-------------", "-----------", "-----------------", "----------------", "------");
 
 		// Iterate over the results
 		while (rs.next()) {
@@ -1469,8 +1469,8 @@ public final class DBNinja {
 			double profit = rs.getDouble("Profit"); // Assuming 'Profit' exists in the DB
 
 			// Print each row with properly formatted values
-			System.out.printf("%-20s %-15s $%-19.2f $%-19.2f $%-14.2f%n",
-					customerType == null ? "" : customerType, // Handle null values for customerType
+			System.out.printf("%-19s %-19s %-19.2f %-19.2f %-19.2f\n", customerType == null ? "" : customerType, OrderMonth, TotalOrderPrice, TotalOrderCost, profit);
+			customerType == null ? "" : customerType, // Handle null values for customerType
 					orderMonth,
 					totalOrderPrice,
 					totalOrderCost,
