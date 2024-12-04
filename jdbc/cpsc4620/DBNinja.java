@@ -1382,16 +1382,15 @@ public final class DBNinja {
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-25s %-15s %-15s%n", "Topping Name", "Total Pizzas", "Total Quantity");
+		System.out.printf("%-25s %-15s %-15s%n", "Topping", "Topping Count");
 		System.out.println("---------------------------------------------------------------");
 
 		// Iterate over the results
 		while (rs.next()) {
-			String toppingName = rs.getString("topping_TopName");
-			int totalPizzas = rs.getInt("TotalPizzas");
-			double totalQuantity = rs.getDouble("TotalQuantity");
+			String toppingName = rs.getString("Topping");
+			int usedCount = rs.getInt("ToppingCount");
 
-			System.out.printf("%-25s %-15d %-15.2f%n", toppingName, totalPizzas, totalQuantity);
+			System.out.printf("%-25s %-15d %-15.2f%n", toppingName, usedCount);
 		}
 
 		// Close resources
@@ -1421,18 +1420,17 @@ public final class DBNinja {
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-10s %-15s %-15s %-15s %-15s%n", "Size", "Crust Type", "Order Month", "Total Pizzas", "Total Profit");
+		System.out.printf("%-10s %-15s %-15s %-15s %-15s%n", "Pizza Size", "Pizza Crust", "Profit", "Last Order Date");
 		System.out.println("--------------------------------------------------------------------------");
 
 		// Iterate over the results
 		while (rs.next()) {
-			String size = rs.getString("Size");
-			String crustType = rs.getString("Crust");
-			String orderMonth = rs.getString("OrderMonth");
-			int totalPizzas = rs.getInt("TotalPizzas");
-			double profit = rs.getDouble("Profit");
+			String Size = rs.getString("Size");
+			String Crust = rs.getString("Crust");
+			double Profit = rs.getDouble("Profit");
+			String OrderMonth = rs.getString("OrderMonth");
 
-			System.out.printf("%-10s %-15s %-15s %-15d $%-14.2f%n", size, crustType, orderMonth, totalPizzas, profit);
+			System.out.printf("%-10s %-15s %-15s %-15d $%-14.2f%n", Size, Crust, Profit, OrderMonth);
 		}
 
 		// Close resources
@@ -1441,8 +1439,7 @@ public final class DBNinja {
 		conn.close();
 	}
 
-	public static void printProfitByOrderType() throws SQLException, IOException
-	{
+	public static void printProfitByOrderType() throws SQLException, IOException {
 		/*
 		 * Prints the ProfitByOrderType view. Remember that this view
 		 * needs to exist in your DB, so be sure you've run your createViews.sql
@@ -1454,7 +1451,6 @@ public final class DBNinja {
 		 * you look at the printf method (rather than the simple print or println).
 		 * It operates the same in Java as it does in C and will make your code
 		 * better.
-		 *
 		 */
 
 		connect_to_db(); // Connect to the database
@@ -1465,18 +1461,25 @@ public final class DBNinja {
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-15s %-15s %-15s%n", "Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
-		System.out.println("-----------------------------------------------");
+		System.out.printf("%-20s %-15s %-20s %-20s %-15s%n",
+				"Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
+		System.out.println("-----------------------------------------------------------------------------------------------");
 
 		// Iterate over the results
 		while (rs.next()) {
-			String customerType = rs.getString("customerType");
-			String OrderMonth = rs.getString("OrderMonth");
-			double TotalOrderPrice = rs.getDouble("TotalOrderPrice");
-			double TotalOrderCost = rs.getDouble("TotalOrderCost");
-			double profit = rs.getDouble("Profit");
+			String customerType = rs.getString("customerType"); // Assuming 'customerType' exists in the DB
+			String orderMonth = rs.getString("OrderMonth");     // Assuming 'OrderMonth' exists in the DB
+			double totalOrderPrice = rs.getDouble("TotalOrderPrice"); // Assuming 'TotalOrderPrice' exists in the DB
+			double totalOrderCost = rs.getDouble("TotalOrderCost");   // Assuming 'TotalOrderCost' exists in the DB
+			double profit = rs.getDouble("Profit"); // Assuming 'Profit' exists in the DB
 
-			System.out.printf("%-15s %-15d $%-14.2f%n", customerType == null ? "" : customerType, OrderMonth, TotalOrderPrice, TotalOrderCost, profit);
+			// Print each row with properly formatted values
+			System.out.printf("%-20s %-15s $%-19.2f $%-19.2f $%-14.2f%n",
+					customerType == null ? "" : customerType, // Handle null values for customerType
+					orderMonth,
+					totalOrderPrice,
+					totalOrderCost,
+					profit);
 		}
 
 		// Close resources
