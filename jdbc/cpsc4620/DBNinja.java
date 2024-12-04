@@ -443,372 +443,431 @@ public final class DBNinja {
 		}
 	}
 
-	public static ArrayList<Order> getOrders(int status) throws SQLException, IOException {
-		ArrayList<Order> orders = new ArrayList<>();
 
-		// Use try-with-resources to manage Connection
-		try (Connection conn = connect_to_db()) {
-			// Build the SQL query with parameters
-			StringBuilder queryBuilder = new StringBuilder("SELECT * FROM ordertable");
-			List<Object> parameters = new ArrayList<>();
 
-			// Append WHERE clause based on status
-			if (status == 1) {
-				queryBuilder.append(" WHERE ordertable_isComplete = ?");
-				parameters.add(false);
-			} else if (status == 2) {
-				queryBuilder.append(" WHERE ordertable_isComplete = ?");
-				parameters.add(true);
-			} else if (status == 3) {
-				// No additional condition needed
-			} else {
-				throw new IllegalArgumentException("Invalid status value: " + status);
-			}
+	public static ArrayList<Order> getOrders(int status) throws SQLException, IOException
+	{
+		/*
+		 * Return an ArrayList of orders.
+		 * ...
+		 */
+		connect_to_db(); // Connect to the database
+		ArrayList<Order> orders = new ArrayList<Order>();
 
-			// Order the results appropriately (e.g., by OrderID)
-			queryBuilder.append(" ORDER BY ordertable_OrderID");
-			String query = queryBuilder.toString();
+		String query = "SELECT * FROM ordertable";
+		boolean whereAdded = false;
 
-			// Use PreparedStatement to prevent SQL injection and handle parameters
-			try (PreparedStatement stmt = conn.prepareStatement(query)) {
-				// Set parameters if any
-				for (int i = 0; i < parameters.size(); i++) {
-					stmt.setObject(i + 1, parameters.get(i));
-				}
-
-				// Execute the query and process the ResultSet
-				try (ResultSet rs = stmt.executeQuery()) {
-					while (rs.next()) {
-						int orderID = rs.getInt("ordertable_OrderID");
-						int custID = rs.getInt("customer_CustID");
-						String orderType = rs.getString("ordertable_OrderType");
-						String orderDate = rs.getString("ordertable_OrderDateTime");
-						double custPrice = rs.getDouble("ordertable_CustPrice");
-						double busPrice = rs.getDouble("ordertable_BusPrice");
-						boolean isComplete = rs.getBoolean("ordertable_isComplete");
-
-						// Handle null customer ID for dine-in orders
-						if (rs.wasNull()) {
-							custID = -1;
-						}
-
-						Order order = null;
-
-						// Determine the order type and create the appropriate Order object
-						if (orderType.equals(dine_in)) {
-							// Dine-in order
-							String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
-							try (PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery)) {
-								dineInStmt.setInt(1, orderID);
-								try (ResultSet dineInRS = dineInStmt.executeQuery()) {
-									int tableNum = 0;
-									if (dineInRS.next()) {
-										tableNum = dineInRS.getInt("dinein_TableNum");
-									}
-									order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
-								}
-							}
-						} else if (orderType.equals(delivery)) {
-							// Delivery order
-							String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
-							try (PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery)) {
-								deliveryStmt.setInt(1, orderID);
-								try (ResultSet deliveryRS = deliveryStmt.executeQuery()) {
-									String houseNum = "";
-									String street = "";
-									String city = "";
-									String state = "";
-									String zip = "";
-									boolean isDelivered = false;
-
-									if (deliveryRS.next()) {
-										houseNum = deliveryRS.getString("delivery_HouseNum");
-										street = deliveryRS.getString("delivery_Street");
-										city = deliveryRS.getString("delivery_City");
-										state = deliveryRS.getString("delivery_State");
-										zip = deliveryRS.getString("delivery_Zip");
-										isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
-									}
-
-									String address = String.join("\t", houseNum, street, city, state, zip);
-									order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
-								}
-							}
-						} else if (orderType.equals(pickup)) {
-							// Pickup order
-							String pickupQuery = "SELECT pickup_isPickedUp FROM pickup WHERE ordertable_OrderID = ?";
-							try (PreparedStatement pickupStmt = conn.prepareStatement(pickupQuery)) {
-								pickupStmt.setInt(1, orderID);
-								try (ResultSet pickupRS = pickupStmt.executeQuery()) {
-									boolean isPickedUp = false;
-									if (pickupRS.next()) {
-										isPickedUp = pickupRS.getBoolean("pickup_isPickedUp");
-									}
-									order = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, isPickedUp, isComplete);
-								}
-							}
-						} else {
-							// Unknown order type
-							continue; // Skip to the next order
-						}
-
-						// Populate the order with pizzas
-						ArrayList<Pizza> pizzas = getPizzas(conn, order);
-						order.setPizzaList(pizzas);
-
-						// Populate the order with discounts
-						ArrayList<Discount> orderDiscounts = getDiscounts(conn, order);
-						order.setDiscountList(orderDiscounts);
-
-						// Add the order to the list
-						orders.add(order);
-					}
-				}
-			} catch (SQLException | IOException e) {
-				// Handle exceptions as needed, possibly logging them
-				throw e; // Rethrow the exception after handling
-			}
-
-			return orders;
+		if (status == 1) {
+			query += " WHERE ordertable_isComplete = false";
+			whereAdded = true;
+		} else if (status == 2) {
+			query += " WHERE ordertable_isComplete = true";
+			whereAdded = true;
+		} else if (status == 3) {
+			// No additional condition needed
+		} else {
+			// Invalid status value
+			conn.close();
+			throw new IllegalArgumentException("Invalid status value: " + status);
 		}
+
+		// Order the results appropriately (e.g., by OrderID)
+		query += " ORDER BY ordertable_OrderID";
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(query);
+
+		while (rs.next()) {
+			int orderID = rs.getInt("ordertable_OrderID");
+			int custID = rs.getInt("customer_CustID");
+			String orderType = rs.getString("ordertable_OrderType");
+			String orderDate = rs.getString("ordertable_OrderDateTime");
+			double custPrice = rs.getDouble("ordertable_CustPrice");
+			double busPrice = rs.getDouble("ordertable_BusPrice");
+			boolean isComplete = rs.getBoolean("ordertable_isComplete");
+
+			// Handle null customer ID for dine-in orders
+			if (rs.wasNull()) {
+				custID = -1;
+			}
+
+			Order order = null;
+
+			// Determine the order type and create the appropriate Order object
+			if (orderType.equals(dine_in)) {
+				// Dine-in order
+				// Fetch dine-in specific data
+				String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
+				PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery);
+				dineInStmt.setInt(1, orderID);
+				ResultSet dineInRS = dineInStmt.executeQuery();
+
+				int tableNum = 0;
+				if (dineInRS.next()) {
+					tableNum = dineInRS.getInt("dinein_TableNum");
+				}
+
+				order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
+
+				dineInRS.close();
+				dineInStmt.close();
+
+			} else if (orderType.equals(delivery)) {
+				// Delivery order
+				// Fetch delivery specific data
+				String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
+				PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery);
+				deliveryStmt.setInt(1, orderID);
+				ResultSet deliveryRS = deliveryStmt.executeQuery();
+
+				String houseNum = "";
+				String street = "";
+				String city = "";
+				String state = "";
+				String zip = "";
+				boolean isDelivered = false;
+
+				if (deliveryRS.next()) {
+					houseNum = deliveryRS.getString("delivery_HouseNum");
+					street = deliveryRS.getString("delivery_Street");
+					city = deliveryRS.getString("delivery_City");
+					state = deliveryRS.getString("delivery_State");
+					zip = deliveryRS.getString("delivery_Zip");
+					isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
+				}
+
+				String address = houseNum + "\t" + street + "\t" + city + "\t" + state + "\t" + zip;
+
+				order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice,isComplete, address, isDelivered);
+
+				deliveryRS.close();
+				deliveryStmt.close();
+
+			} else if (orderType.equals(pickup)) {
+				// Pickup order
+				// Fetch pickup specific data
+				String pickupQuery = "SELECT pickup_isPickedUp FROM pickup WHERE ordertable_OrderID = ?";
+				PreparedStatement pickupStmt = conn.prepareStatement(pickupQuery);
+				pickupStmt.setInt(1, orderID);
+				ResultSet pickupRS = pickupStmt.executeQuery();
+
+				boolean isPickedUp = false;
+				if (pickupRS.next()) {
+					isPickedUp = pickupRS.getBoolean("pickup_isPickedUp");
+				}
+
+				order = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, isPickedUp, isComplete);
+
+				pickupRS.close();
+				pickupStmt.close();
+
+			} else {
+				// Unknown order type
+				continue;
+			}
+			// Populate the order with pizzas
+			ArrayList<Pizza> pizzas = getPizzas(order);
+			order.setPizzaList(pizzas);
+
+			// Populate the order with discounts
+			ArrayList<Discount> orderDiscounts = getDiscounts(order);
+			order.setDiscountList(orderDiscounts);
+
+			// Add the order to the list
+			orders.add(order);
+		}
+
+		// Close resources
+		rs.close();
+		stmt.close();
+		conn.close();
+
+		return orders;
 	}
 
-	public static Order getLastOrder() throws SQLException, IOException {
+	public static Order getLastOrder() throws SQLException, IOException
+	{
+		/*
+		 * Query the database for the LAST order added
+		 * then return an Order object for that order.
+		 * NOTE...there will ALWAYS be a "last order"!
+		 */
+
+		connect_to_db(); // Connect to the database
+
+		// Prepare the SQL query to get the last order
+		String query = "SELECT * FROM ordertable ORDER BY ordertable_OrderID DESC LIMIT 1";
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(query);
+
 		Order lastOrder = null;
-		// Use try-with-resources to manage Connection
-		try (Connection conn = connect_to_db()) {
-			// Prepare the SQL query to get the last order
-			String query = "SELECT * FROM ordertable ORDER BY ordertable_OrderID DESC LIMIT 1";
 
-			// Use PreparedStatement instead of Statement for better security and performance
-			try (PreparedStatement stmt = conn.prepareStatement(query);
-				 ResultSet rs = stmt.executeQuery()) {
+		if (rs.next()) {
+			int orderID = rs.getInt("ordertable_OrderID");
+			int custID = rs.getInt("customer_CustID");
+			String orderType = rs.getString("ordertable_OrderType");
+			String orderDate = rs.getString("ordertable_OrderDateTime");
+			double custPrice = rs.getDouble("ordertable_CustPrice");
+			double busPrice = rs.getDouble("ordertable_BusPrice");
+			boolean isComplete = rs.getBoolean("ordertable_isComplete");
 
-				if (rs.next()) {
-					int orderID = rs.getInt("ordertable_OrderID");
-					int custID = rs.getInt("customer_CustID");
-					String orderType = rs.getString("ordertable_OrderType");
-					String orderDate = rs.getString("ordertable_OrderDateTime");
-					double custPrice = rs.getDouble("ordertable_CustPrice");
-					double busPrice = rs.getDouble("ordertable_BusPrice");
-					boolean isComplete = rs.getBoolean("ordertable_isComplete");
-
-					// Handle null customer ID for dine-in orders
-					if (rs.wasNull()) {
-						custID = -1;
-					}
-
-					// Determine the order type and create the appropriate Order object
-					if (orderType.equals(dine_in)) {
-						// Dine-in order
-						String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
-						try (PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery)) {
-							dineInStmt.setInt(1, orderID);
-							try (ResultSet dineInRS = dineInStmt.executeQuery()) {
-								int tableNum = 0;
-								if (dineInRS.next()) {
-									tableNum = dineInRS.getInt("dinein_TableNum");
-								}
-								lastOrder = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
-							}
-						}
-					} else if (orderType.equals(delivery)) {
-						// Delivery order
-						String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
-						try (PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery)) {
-							deliveryStmt.setInt(1, orderID);
-							try (ResultSet deliveryRS = deliveryStmt.executeQuery()) {
-								String houseNum = "";
-								String street = "";
-								String city = "";
-								String state = "";
-								String zip = "";
-								boolean isDelivered = false;
-
-								if (deliveryRS.next()) {
-									houseNum = deliveryRS.getString("delivery_HouseNum");
-									street = deliveryRS.getString("delivery_Street");
-									city = deliveryRS.getString("delivery_City");
-									state = deliveryRS.getString("delivery_State");
-									zip = deliveryRS.getString("delivery_Zip");
-									isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
-								}
-
-								String address = String.join("\t", houseNum, street, city, state, zip);
-								lastOrder = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
-							}
-						}
-					} else if (orderType.equals(pickup)) {
-						// Pickup order
-						String pickupQuery = "SELECT pickup_isPickedUp FROM pickup WHERE ordertable_OrderID = ?";
-						try (PreparedStatement pickupStmt = conn.prepareStatement(pickupQuery)) {
-							pickupStmt.setInt(1, orderID);
-							try (ResultSet pickupRS = pickupStmt.executeQuery()) {
-								boolean isPickedUp = false;
-								if (pickupRS.next()) {
-									isPickedUp = pickupRS.getBoolean("pickup_isPickedUp");
-								}
-								lastOrder = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, isPickedUp, isComplete);
-							}
-						}
-					} else {
-						// Unknown order type
-						throw new SQLException("Unknown order type for OrderID: " + orderID);
-					}
-
-					// Populate the order with pizzas
-					ArrayList<Pizza> pizzas = getPizzas(conn, lastOrder);
-					lastOrder.setPizzaList(pizzas);
-
-					// Populate the order with discounts
-					ArrayList<Discount> orderDiscounts = getDiscounts(conn, lastOrder);
-					lastOrder.setDiscountList(orderDiscounts);
-				}
+			// Handle null customer ID for dine-in orders
+			if (rs.wasNull()) {
+				custID = -1;
 			}
-		} catch (SQLException | IOException e) {
-			// Handle exceptions as needed, possibly logging them
-			throw e; // Rethrow the exception after handling
+
+			// Determine the order type and create the appropriate Order object
+			if (orderType.equals(dine_in)) {
+				// Dine-in order
+				// Fetch dine-in specific data
+				String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
+				PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery);
+				dineInStmt.setInt(1, orderID);
+				ResultSet dineInRS = dineInStmt.executeQuery();
+
+				int tableNum = 0;
+				if (dineInRS.next()) {
+					tableNum = dineInRS.getInt("dinein_TableNum");
+				}
+
+				lastOrder = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
+
+				dineInRS.close();
+				dineInStmt.close();
+
+			} else if (orderType.equals(delivery)) {
+				// Delivery order
+				// Fetch delivery specific data
+				String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
+				PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery);
+				deliveryStmt.setInt(1, orderID);
+				ResultSet deliveryRS = deliveryStmt.executeQuery();
+
+				String houseNum = "";
+				String street = "";
+				String city = "";
+				String state = "";
+				String zip = "";
+				boolean isDelivered = false;
+
+				if (deliveryRS.next()) {
+					houseNum = deliveryRS.getString("delivery_HouseNum");
+					street = deliveryRS.getString("delivery_Street");
+					city = deliveryRS.getString("delivery_City");
+					state = deliveryRS.getString("delivery_State");
+					zip = deliveryRS.getString("delivery_Zip");
+					isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
+				}
+
+				String address = houseNum + "\t" + street + "\t" + city + "\t" + state + "\t" + zip;
+
+				lastOrder = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
+
+				deliveryRS.close();
+				deliveryStmt.close();
+
+			} else if (orderType.equals(pickup)) {
+				// Pickup order
+				// Fetch pickup specific data
+				String pickupQuery = "SELECT pickup_isPickedUp FROM pickup WHERE ordertable_OrderID = ?";
+				PreparedStatement pickupStmt = conn.prepareStatement(pickupQuery);
+				pickupStmt.setInt(1, orderID);
+				ResultSet pickupRS = pickupStmt.executeQuery();
+
+				boolean isPickedUp = false;
+				if (pickupRS.next()) {
+					isPickedUp = pickupRS.getBoolean("pickup_isPickedUp");
+				}
+
+				lastOrder = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, isPickedUp, isComplete);
+
+				pickupRS.close();
+				pickupStmt.close();
+
+			} else {
+				// Unknown order type
+				throw new SQLException("Unknown order type for OrderID: " + orderID);
+			}
+
+			// Populate the order with pizzas
+			ArrayList<Pizza> pizzas = getPizzas(lastOrder);
+			lastOrder.setPizzaList(pizzas);
+
+			// Populate the order with discounts
+			ArrayList<Discount> orderDiscounts = getDiscounts(lastOrder);
+			lastOrder.setDiscountList(orderDiscounts);
 		}
+
+		// Close resources
+		rs.close();
+		stmt.close();
+		conn.close();
 
 		// Return the last order
 		return lastOrder;
 	}
 
+	public static ArrayList<Order> getOrdersByDate(String date) throws SQLException, IOException
+	{
+		/*
+		 * Query the database for ALL the orders placed on a specific date
+		 * and return a list of those orders.
+		 *
+		 */
 
-	public static ArrayList<Order> getOrdersByDate(String date) throws SQLException, IOException {
-		ArrayList<Order> orders = new ArrayList<>();
+		connect_to_db(); // Connect to the database
 
-		// Use try-with-resources to manage Connection
-		try (Connection conn = connect_to_db()) {
-			// Prepare the SQL query using PreparedStatement to prevent SQL injection
-			String query = "SELECT * FROM ordertable WHERE DATE(ordertable_OrderDateTime) = ? ORDER BY ordertable_OrderID";
-			try (PreparedStatement stmt = conn.prepareStatement(query)) {
-				stmt.setString(1, date); // Assuming 'date' is in 'YYYY-MM-DD' format
+		ArrayList<Order> orders = new ArrayList<Order>();
 
-				// Execute the query and process the ResultSet
-				try (ResultSet rs = stmt.executeQuery()) {
-					while (rs.next()) {
-						int orderID = rs.getInt("ordertable_OrderID");
-						int custID = rs.getInt("customer_CustID");
-						String orderType = rs.getString("ordertable_OrderType");
-						String orderDate = rs.getString("ordertable_OrderDateTime");
-						double custPrice = rs.getDouble("ordertable_CustPrice");
-						double busPrice = rs.getDouble("ordertable_BusPrice");
-						boolean isComplete = rs.getBoolean("ordertable_isComplete");
+		// Prepare the SQL query
+		String query = "SELECT * FROM ordertable WHERE DATE(ordertable_OrderDateTime) = ? ORDER BY ordertable_OrderID";
+		PreparedStatement stmt = conn.prepareStatement(query);
+		stmt.setString(1, date); // Assuming 'date' is in 'YYYY-MM-DD' format
 
-						// Handle null customer ID for dine-in orders
-						if (rs.wasNull()) {
-							custID = -1;
-						}
+		ResultSet rs = stmt.executeQuery();
 
-						Order order = null;
+		while (rs.next()) {
+			int orderID = rs.getInt("ordertable_OrderID");
+			int custID = rs.getInt("customer_CustID");
+			String orderType = rs.getString("ordertable_OrderType");
+			String orderDate = rs.getString("ordertable_OrderDateTime");
+			double custPrice = rs.getDouble("ordertable_CustPrice");
+			double busPrice = rs.getDouble("ordertable_BusPrice");
+			boolean isComplete = rs.getBoolean("ordertable_isComplete");
 
-						// Determine the order type and create the appropriate Order object
-						if (orderType.equals(dine_in)) {
-							// Dine-in order
-							String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
-							try (PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery)) {
-								dineInStmt.setInt(1, orderID);
-								try (ResultSet dineInRS = dineInStmt.executeQuery()) {
-									int tableNum = 0;
-									if (dineInRS.next()) {
-										tableNum = dineInRS.getInt("dinein_TableNum");
-									}
-									order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
-								}
-							}
-						} else if (orderType.equals(delivery)) {
-							// Delivery order
-							String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
-							try (PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery)) {
-								deliveryStmt.setInt(1, orderID);
-								try (ResultSet deliveryRS = deliveryStmt.executeQuery()) {
-									String houseNum = "";
-									String street = "";
-									String city = "";
-									String state = "";
-									String zip = "";
-									boolean isDelivered = false;
-
-									if (deliveryRS.next()) {
-										houseNum = deliveryRS.getString("delivery_HouseNum");
-										street = deliveryRS.getString("delivery_Street");
-										city = deliveryRS.getString("delivery_City");
-										state = deliveryRS.getString("delivery_State");
-										zip = deliveryRS.getString("delivery_Zip");
-										isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
-									}
-
-									String address = String.join("\t", houseNum, street, city, state, zip);
-									order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
-								}
-							}
-						} else if (orderType.equals(pickup)) {
-							// Pickup order
-							String pickupQuery = "SELECT pickup_isPickedUp FROM pickup WHERE ordertable_OrderID = ?";
-							try (PreparedStatement pickupStmt = conn.prepareStatement(pickupQuery)) {
-								pickupStmt.setInt(1, orderID);
-								try (ResultSet pickupRS = pickupStmt.executeQuery()) {
-									boolean isPickedUp = false;
-									if (pickupRS.next()) {
-										isPickedUp = pickupRS.getBoolean("pickup_isPickedUp");
-									}
-									order = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, isPickedUp, isComplete);
-								}
-							}
-						} else {
-							// Unknown order type
-							throw new SQLException("Unknown order type for OrderID: " + orderID);
-						}
-
-						// Populate the order with pizzas
-						ArrayList<Pizza> pizzas = getPizzas(conn, order);
-						order.setPizzaList(pizzas);
-
-						// Populate the order with discounts
-						ArrayList<Discount> orderDiscounts = getDiscounts(conn, order);
-						order.setDiscountList(orderDiscounts);
-
-						// Add the order to the list
-						orders.add(order);
-					}
-				}
+			// Handle null customer ID for dine-in orders
+			if (rs.wasNull()) {
+				custID = -1;
 			}
-		} catch (SQLException | IOException e) {
-			// Handle exceptions as needed, possibly logging them
-			throw e; // Rethrow the exception after handling
+
+			Order order = null;
+
+			// Determine the order type and create the appropriate Order object
+			if (orderType.equals(dine_in)) {
+				// Dine-in order
+				// Fetch dine-in specific data
+				String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
+				PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery);
+				dineInStmt.setInt(1, orderID);
+				ResultSet dineInRS = dineInStmt.executeQuery();
+
+				int tableNum = 0;
+				if (dineInRS.next()) {
+					tableNum = dineInRS.getInt("dinein_TableNum");
+				}
+
+				order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
+
+				dineInRS.close();
+				dineInStmt.close();
+
+			} else if (orderType.equals(delivery)) {
+				// Delivery order
+				// Fetch delivery specific data
+				String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
+				PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery);
+				deliveryStmt.setInt(1, orderID);
+				ResultSet deliveryRS = deliveryStmt.executeQuery();
+
+				String houseNum = "";
+				String street = "";
+				String city = "";
+				String state = "";
+				String zip = "";
+				boolean isDelivered = false;
+
+				if (deliveryRS.next()) {
+					houseNum = deliveryRS.getString("delivery_HouseNum");
+					street = deliveryRS.getString("delivery_Street");
+					city = deliveryRS.getString("delivery_City");
+					state = deliveryRS.getString("delivery_State");
+					zip = deliveryRS.getString("delivery_Zip");
+					isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
+				}
+
+				String address = houseNum + "\t" + street + "\t" + city + "\t" + state + "\t" + zip;
+
+				order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
+
+				deliveryRS.close();
+				deliveryStmt.close();
+
+			} else if (orderType.equals(pickup)) {
+				// Pickup order
+				// Fetch pickup specific data
+				String pickupQuery = "SELECT pickup_isPickedUp FROM pickup WHERE ordertable_OrderID = ?";
+				PreparedStatement pickupStmt = conn.prepareStatement(pickupQuery);
+				pickupStmt.setInt(1, orderID);
+				ResultSet pickupRS = pickupStmt.executeQuery();
+
+				boolean isPickedUp = false;
+				if (pickupRS.next()) {
+					isPickedUp = pickupRS.getBoolean("pickup_isPickedUp");
+				}
+
+				order = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, isPickedUp, isComplete);
+
+				pickupRS.close();
+				pickupStmt.close();
+
+			} else {
+				// Unknown order type
+				continue; // Skip to the next order
+			}
+
+			// Populate the order with pizzas
+			ArrayList<Pizza> pizzas = getPizzas(order);
+			order.setPizzaList(pizzas);
+
+			// Populate the order with discounts
+			ArrayList<Discount> orderDiscounts = getDiscounts(order);
+			order.setDiscountList(orderDiscounts);
+
+			// Add the order to the list
+			orders.add(order);
 		}
+
+		// Close resources
+		rs.close();
+		stmt.close();
+		conn.close();
 
 		return orders;
 	}
 
-	public static ArrayList<Discount> getDiscountList() throws SQLException, IOException {
-		ArrayList<Discount> discounts = new ArrayList<>();
+	public static ArrayList<Discount> getDiscountList() throws SQLException, IOException
+	{
+		/*
+		 * Query the database for all the available discounts and
+		 * return them in an arrayList of discounts ordered by discount name.
+		 *
+		 */
 
-		// Use try-with-resources to manage Connection
-		try (Connection conn = connect_to_db()) {
-			// Prepare the SQL query using PreparedStatement to prevent SQL injection
-			String query = "SELECT discount_DiscountID, discount_DiscountName, discount_Amount, discount_IsPercent FROM discount ORDER BY discount_DiscountName";
-			try (PreparedStatement stmt = conn.prepareStatement(query);
-				 ResultSet rs = stmt.executeQuery()) {
+		connect_to_db(); // Connect to the database
 
-				while (rs.next()) {
-					int discountID = rs.getInt("discount_DiscountID");
-					String discountName = rs.getString("discount_DiscountName");
-					double amount = rs.getDouble("discount_Amount");
-					boolean isPercent = rs.getBoolean("discount_IsPercent");
+		ArrayList<Discount> discounts = new ArrayList<Discount>();
 
-					// Create a Discount object
-					Discount discount = new Discount(discountID, discountName, amount, isPercent);
+		String query = "SELECT * FROM discount ORDER BY discount_DiscountName";
 
-					// Add the Discount object to the list
-					discounts.add(discount);
-				}
-			}
-		} catch (SQLException | IOException e) {
-			// Handle exceptions as needed, possibly logging them
-			throw e; // Rethrow the exception after handling
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(query);
+
+		while (rs.next()) {
+			int discountID = rs.getInt("discount_DiscountID");
+			String discountName = rs.getString("discount_DiscountName");
+			double amount = rs.getDouble("discount_Amount");
+			boolean isPercent = rs.getBoolean("discount_IsPercent");
+
+			// Create a Discount object
+			Discount discount = new Discount(discountID, discountName, amount, isPercent);
+
+			// Add the Discount object to the list
+			discounts.add(discount);
 		}
+
+		// Close resources
+		rs.close();
+		stmt.close();
+		conn.close();
 
 		// Return the list of discounts
 		return discounts;
