@@ -14,17 +14,19 @@ CREATE VIEW ToppingPopularity AS
            ) AS ToppingCount
     FROM topping LEFT JOIN pizza_topping ON topping.topping_TopID = pizza_topping.topping_TopID
     GROUP BY topping_TopName
-    ORDER BY `ToppingCount` DESC;
+    ORDER BY `ToppingCount` DESC, 'Topping';
 
 -- View ProfitByPizza
 CREATE VIEW ProfitByPizza AS
     SELECT pizza_Size AS Size,
            pizza_CrustType AS Crust,
-           SUM(pizza_CustPrice - pizza_BusPrice) AS Profit,
+           COUNT(*) AS TotalPizzas,
+           ROUND(SUM(pizza_CustPrice - pizza_BusPrice),2) AS Profit,
            DATE_FORMAT(pizza_PizzaDate, '%c/%Y') AS OrderMonth
     FROM pizza
     GROUP BY pizza_Size, pizza_CrustType, `OrderMonth`
     ORDER BY `Profit`;
+
 
 -- View ProfitByOrderType
 CREATE VIEW ProfitByOrderType AS
