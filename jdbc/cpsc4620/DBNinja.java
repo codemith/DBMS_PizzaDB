@@ -1465,16 +1465,18 @@ public final class DBNinja {
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-15s %-15s %-15s%n", "Order Type", "Total Orders", "Total Profit");
+		System.out.printf("%-15s %-15s %-15s%n", "Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
 		System.out.println("-----------------------------------------------");
 
 		// Iterate over the results
 		while (rs.next()) {
-			String orderType = rs.getString("OrderType");
-			int totalOrders = rs.getInt("TotalOrders");
-			double Profit = rs.getDouble("Profit");
+			String customerType = rs.getString("customerType");
+			String OrderMonth = rs.getString("OrderMonth");
+			double TotalOrderPrice = rs.getDouble("TotalOrderPrice");
+			double TotalOrderCost = rs.getDouble("TotalOrderCost");
+			double profit = rs.getDouble("Profit");
 
-			System.out.printf("%-15s %-15d $%-14.2f%n", orderType, totalOrders, Profit);
+			System.out.printf("%-15s %-15d $%-14.2f%n", customerType == null ? "" : customerType, OrderMonth, TotalOrderPrice, TotalOrderCost, profit);
 		}
 
 		// Close resources
