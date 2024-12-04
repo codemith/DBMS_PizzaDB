@@ -71,51 +71,105 @@ public final class DBNinja {
 
 	public static void addOrder(Order o) throws SQLException, IOException
 	{
+		/*
+		 * add code to add the order to the DB. Remember that we're not just
+		 * adding the order to the order DB table, but we're also recording
+		 * the necessary data for the delivery, dinein, pickup, pizzas, toppings
+		 * on pizzas, order discounts and pizza discounts.
+		 *
+		 * This is a KEY method as it must store all the data in the Order object
+		 * in the database and make sure all the tables are correctly linked.
+		 *
+		 * Remember, if the order is for Dine In, there is no customer...
+		 * so the cusomter id coming from the Order object will be -1.
+		 *
+		 */
+
 		try {
 			connect_to_db();
-			if (conn != null) {
-				// Insert the order details into the ordertable
-				String insertOrderSQL = "INSERT INTO ordertable (customer_CustID, ordertable_OrderType, ordertable_OrderDateTime, ordertable_CustPrice, ordertable_BusPrice, ordertable_IsComplete) VALUES (?, ?, ?, ?, ?, ?)";
-				PreparedStatement pstmt = conn.prepareStatement(insertOrderSQL, Statement.RETURN_GENERATED_KEYS);
-
-				if (o.getCustID() != -1) {
+			if(conn != null){
+				// 1. Insert into orders table
+				String orderSQL = "INSERT INTO ordertable ( customer_CustID, ordertable_OrderType, ordertable_OrderDateTime, ordertable_CustPrice, ordertable_BusPrice, ordertable_IsComplete) VALUES (?, ?, ?, ?, ?, ?)";
+				PreparedStatement pstmt = conn.prepareStatement(orderSQL, Statement.RETURN_GENERATED_KEYS);
+				if(o.getCustID() != -1){
 					pstmt.setInt(1, o.getCustID());
 				} else {
 					pstmt.setObject(1, null);
 				}
-
 				pstmt.setString(2, o.getOrderType());
 				pstmt.setString(3, o.getDate());
 				pstmt.setDouble(4, o.getCustPrice());
 				pstmt.setDouble(5, o.getBusPrice());
 				pstmt.setBoolean(6, o.getIsComplete());
-				pstmt.executeUpdate();
+				int rowsAffected = pstmt.executeUpdate();
 
-				// Retrieve the generated Order ID
 				ResultSet generatedKeys = pstmt.getGeneratedKeys();
-				int orderId = -1;
+				int generatedOrderID = -1;
 				if (generatedKeys.next()) {
-					orderId = generatedKeys.getInt(1);
-				} else {
-					throw new SQLException("Order ID generation failed.");
+					generatedOrderID = generatedKeys.getInt(1);
+				}
+				else {
+					throw new SQLException("Failed to retrieve generated OrderID.");
+				}
+				// 2. Handle order type specific tables
+				String orderType = o.getOrderType();
+				switch (orderType.toLowerCase()) {
+					case "delivery":
+						DeliveryOrder delivery = (DeliveryOrder) o;
+						String deliverySQL = "INSERT INTO delivery (ordertable_OrderID, delivery_HouseNum, delivery_Street, delivery_City, delivery_State, delivery_Zip, delivery_IsDelivered) VALUES (?, ?, ?, ?, ?, ?, ?)";
+						pstmt = conn.prepareStatement(deliverySQL);
+						String[] addressParts = delivery.getAddress().split("\t");
+						if (addressParts.length != 5) {
+							throw new SQLException("Invalid address format for delivery order: " + delivery.getAddress());
+						}
+						pstmt.setInt(1, generatedOrderID);
+						pstmt.setString(2, addressParts[0]); // House number
+						pstmt.setString(3, addressParts[1]); // Street
+						pstmt.setString(4, addressParts[2]); // City
+						pstmt.setString(5, addressParts[3]); // State
+						pstmt.setString(6, addressParts[4]); // Zip
+						pstmt.setBoolean(7, delivery.getIsComplete());
+						pstmt.executeUpdate();
+						break;
+					case "pickup":
+						String pickupSQL = "INSERT INTO pickup (ordertable_OrderID, pickup_IsPickedUp) VALUES (?, ?)";
+						pstmt = conn.prepareStatement(pickupSQL);
+						pstmt.setInt(1, generatedOrderID);
+						pstmt.setBoolean(2, false);
+						pstmt.executeUpdate();
+						break;
+					case "dinein":
+						DineinOrder dineIn = (DineinOrder) o;
+						String dineinSQL = "INSERT INTO dinein (ordertable_OrderID, dinein_TableNum) VALUES (?, ?)";
+						pstmt = conn.prepareStatement(dineinSQL);
+						pstmt.setInt(1, generatedOrderID);
+						pstmt.setInt(2, dineIn.getTableNum());
+						pstmt.executeUpdate();
+						break;
+					default:
+						throw new SQLException("Unknown order type: " + orderType);
 				}
 
-				// Handle specific order type details
-				handleOrderTypeDetails(o, orderId);
-
-				// Process associated pizzas and their details
-				for (Pizza pizza : o.getPizzaList()) {
-					addPizza(java.sql.Timestamp.valueOf(o.getDate()), orderId, pizza);
+				// 3. Add pizzas and their details
+				for (Pizza p : o.getPizzaList()) {
+					addPizza(java.sql.Timestamp.valueOf(o.getDate()), generatedOrderID, p);
 				}
 
-				// Process associated order discounts
-				for (Discount discount : o.getDiscountList()) {
-					String discountSQL = "INSERT INTO order_discount (ordertable_OrderID, discount_DiscountID) VALUES (?, ?)";
-					try (PreparedStatement discountStmt = conn.prepareStatement(discountSQL)) {
-						discountStmt.setInt(1, orderId);
-						discountStmt.setInt(2, discount.getDiscountID());
-						discountStmt.executeUpdate();
+				// 4. Add order discounts
+				for (Discount d : o.getDiscountList()) {
+					try {
+						connect_to_db();
+						String discountSQL = "INSERT INTO order_discount (ordertable_OrderID, discount_DiscountID) VALUES (?, ?)";
+						pstmt = conn.prepareStatement(discountSQL);
+						pstmt.setInt(1, generatedOrderID);
+						pstmt.setInt(2, d.getDiscountID());
+						pstmt.executeUpdate();
+					} finally {
+						if (conn != null) {
+							conn.close();
+						}
 					}
+
 				}
 			}
 		} finally {
@@ -123,109 +177,9 @@ public final class DBNinja {
 				conn.close();
 			}
 		}
-
-
-/**
- * Handles order-type-specific details (Delivery, Pickup, or Dine-In).
- */
-		private static void handleOrderTypeDetails(Order o, int orderId) throws SQLException {
-		String orderType = o.getOrderType().toLowerCase();
-		switch (orderType) {
-			case "delivery": {
-				DeliveryOrder delivery = (DeliveryOrder) o;
-				String[] addressParts = delivery.getAddress().split("\t");
-				if (addressParts.length != 5) {
-					throw new SQLException("Invalid address format: " + delivery.getAddress());
-				}
-
-				String deliverySQL = "INSERT INTO delivery (ordertable_OrderID, delivery_HouseNum, delivery_Street, delivery_City, delivery_State, delivery_Zip, delivery_IsDelivered) VALUES (?, ?, ?, ?, ?, ?, ?)";
-				try (PreparedStatement pstmt = conn.prepareStatement(deliverySQL)) {
-					pstmt.setInt(1, orderId);
-					pstmt.setString(2, addressParts[0]); // House number
-					pstmt.setString(3, addressParts[1]); // Street
-					pstmt.setString(4, addressParts[2]); // City
-					pstmt.setString(5, addressParts[3]); // State
-					pstmt.setString(6, addressParts[4]); // Zip code
-					pstmt.setBoolean(7, delivery.getIsComplete());
-					pstmt.executeUpdate();
-				}
-				break;
-			}
-			case "pickup": {
-				String pickupSQL = "INSERT INTO pickup (ordertable_OrderID, pickup_IsPickedUp) VALUES (?, ?)";
-				try (PreparedStatement pstmt = conn.prepareStatement(pickupSQL)) {
-					pstmt.setInt(1, orderId);
-					pstmt.setBoolean(2, false);
-					pstmt.executeUpdate();
-				}
-				break;
-			}
-			case "dinein": {
-				DineinOrder dineIn = (DineinOrder) o;
-				String dineinSQL = "INSERT INTO dinein (ordertable_OrderID, dinein_TableNum) VALUES (?, ?)";
-				try (PreparedStatement pstmt = conn.prepareStatement(dineinSQL)) {
-					pstmt.setInt(1, orderId);
-					pstmt.setInt(2, dineIn.getTableNum());
-					pstmt.executeUpdate();
-				}
-				break;
-			}
-			default:
-				throw new SQLException("Unknown order type: " + orderType);
-		}
 	}
-
-
-		
-		/**
-		 * Handles order-type-specific details (Delivery, Pickup, or Dine-In).
-		 */
-		private static void handleOrderTypeDetails(Order o, int orderId) throws SQLException {
-			String orderType = o.getOrderType().toLowerCase();
-			switch (orderType) {
-				case "delivery" -> {
-					DeliveryOrder delivery = (DeliveryOrder) o;
-					String[] addressParts = delivery.getAddress().split("\t");
-					if (addressParts.length != 5) {
-						throw new SQLException("Invalid address format: " + delivery.getAddress());
-					}
-		
-					String deliverySQL = " INSERT INTO delivery (ordertable_OrderID, delivery_HouseNum, delivery_Street, delivery_City, delivery_State, delivery_Zip, delivery_IsDelivered) VALUES (?, ?, ?, ?, ?, ?, ?) ";
-					try (PreparedStatement pstmt = conn.prepareStatement(deliverySQL)) {
-						pstmt.setInt(1, orderId);
-						pstmt.setString(2, addressParts[0]); // House number
-						pstmt.setString(3, addressParts[1]); // Street
-						pstmt.setString(4, addressParts[2]); // City
-						pstmt.setString(5, addressParts[3]); // State
-						pstmt.setString(6, addressParts[4]); // Zip code
-						pstmt.setBoolean(7, delivery.getIsComplete());
-						pstmt.executeUpdate();
-					}
-				}
-				case "pickup" -> {
-					String pickupSQL = "INSERT INTO pickup (ordertable_OrderID, pickup_IsPickedUp) VALUES (?, ?)";
-					try (PreparedStatement pstmt = conn.prepareStatement(pickupSQL)) {
-						pstmt.setInt(1, orderId);
-						pstmt.setBoolean(2, false);
-						pstmt.executeUpdate();
-					}
-				}
-				case "dinein" -> {
-					DineinOrder dineIn = (DineinOrder) o;
-					String dineinSQL = "INSERT INTO dinein (ordertable_OrderID, dinein_TableNum) VALUES (?, ?)";
-					try (PreparedStatement pstmt = conn.prepareStatement(dineinSQL)) {
-						pstmt.setInt(1, orderId);
-						pstmt.setInt(2, dineIn.getTableNum());
-						pstmt.executeUpdate();
-					}
-				}
-				default -> throw new SQLException("Unknown order type: " + orderType);
-			}
-		}
-	}	
-
-
-	public static int addPizza(java.util.Date d, int orderID, Pizza p) throws SQLException, IOException {
+	public static int addPizza(java.util.Date d, int orderID, Pizza p) throws SQLException, IOException
+	{
 		/*
 		 * Add the code needed to insert the pizza into the database.
 		 * Keep in mind you must also add the pizza discounts and toppings
@@ -235,94 +189,74 @@ public final class DBNinja {
 		 * and ALL its Pizzas can be assigned the same DTS.
 		 *
 		 * This method returns the id of the pizza just added.
+		 *
 		 */
-	
-		int generatedPizzaID = -1; // Initialize pizza ID to track the inserted record
-	
 		try {
 			connect_to_db();
-	
-			if (conn != null) {
-				// Step 1: Insert pizza details
-				generatedPizzaID = insertPizzaDetails(orderID, p);
-	
-				// Step 2: Add toppings associated with the pizza
-				addPizzaToppings(generatedPizzaID, p);
-	
-				// Step 3: Add pizza-specific discounts
-				addPizzaDiscounts(generatedPizzaID, p);
+			if(conn != null){
+				String pizzaSQL = "INSERT INTO pizza (ordertable_OrderID, pizza_PizzaState, pizza_PizzaDate, pizza_CrustType, pizza_Size, pizza_CustPrice, pizza_BusPrice) VALUES (?, ?, ?, ?, ?, ?, ?)";
+				PreparedStatement pstmt = conn.prepareStatement(pizzaSQL, Statement.RETURN_GENERATED_KEYS);
+				pstmt.setInt(1, orderID);
+				pstmt.setString(2, p.getPizzaState());
+				pstmt.setString(3, p.getPizzaDate());
+				pstmt.setString(4, p.getCrustType());
+				pstmt.setString(5, p.getSize());
+				pstmt.setDouble(6, p.getCustPrice());
+				pstmt.setDouble(7, p.getBusPrice());
+				pstmt.executeUpdate();
+
+				ResultSet generatedKeys = pstmt.getGeneratedKeys();
+				int generatedPizzaID = -1;
+				if (generatedKeys.next()) {
+					generatedPizzaID = generatedKeys.getInt(1); // Retrieve the generated key
+				} else {
+					throw new SQLException("Failed to retrieve generated OrderID.");
+				}
+
+				for (Topping t : p.getToppings()) {
+					try {
+						connect_to_db();
+						if(conn != null){
+							String toppingSQL = "INSERT INTO pizza_topping (pizza_PizzaID, topping_TopID, pizza_topping_IsDouble) VALUES (?, ?, ?)";
+							pstmt = conn.prepareStatement(toppingSQL);
+							pstmt.setInt(1, generatedPizzaID);
+							pstmt.setInt(2, t.getTopID());
+							pstmt.setBoolean(3, t.getDoubled());
+							pstmt.executeUpdate();
+							addToInventory(t.getTopID(),t.getDoubled() ? -2: -1);
+						}
+					} finally {
+						if (conn != null) {
+							conn.close();
+						}
+					}
+				}
+
+				for (Discount di : p.getDiscounts()) {
+					try {
+						connect_to_db();
+						if(conn != null){
+							String discountSQL = "INSERT INTO pizza_discount (pizza_PizzaID, discount_DiscountID) VALUES (?, ?)";
+							pstmt = conn.prepareStatement(discountSQL);
+							pstmt.setInt(1, generatedPizzaID);
+							pstmt.setInt(2, di.getDiscountID());
+							pstmt.executeUpdate();
+						}
+					} finally {
+						if (conn != null) {
+							conn.close();
+						}
+					}
+				}
 			}
 		} finally {
-			if (conn != null) {
+			if(conn != null){
 				conn.close();
 			}
 		}
-	
-		return generatedPizzaID;
+		return p.getPizzaID();
 	}
-	
-	/**
-	 * Inserts pizza details into the database and returns the generated Pizza ID.
-	 */
-	private static int insertPizzaDetails(int orderID, Pizza p) throws SQLException {
-		String pizzaSQL = """
-			INSERT INTO pizza (ordertable_OrderID, pizza_PizzaState, pizza_PizzaDate, 
-							   pizza_CrustType, pizza_Size, pizza_CustPrice, pizza_BusPrice) 
-			VALUES (?, ?, ?, ?, ?, ?, ?)
-		""";
-		try (PreparedStatement pstmt = conn.prepareStatement(pizzaSQL, Statement.RETURN_GENERATED_KEYS)) {
-			pstmt.setInt(1, orderID);
-			pstmt.setString(2, p.getPizzaState());
-			pstmt.setString(3, p.getPizzaDate());
-			pstmt.setString(4, p.getCrustType());
-			pstmt.setString(5, p.getSize());
-			pstmt.setDouble(6, p.getCustPrice());
-			pstmt.setDouble(7, p.getBusPrice());
-			pstmt.executeUpdate();
-	
-			ResultSet generatedKeys = pstmt.getGeneratedKeys();
-			if (generatedKeys.next()) {
-				return generatedKeys.getInt(1); // Return the generated pizza ID
-			} else {
-				throw new SQLException("Failed to retrieve generated Pizza ID.");
-			}
-		}
-	}
-	
-	/**
-	 * Adds toppings for the pizza in the database and updates the inventory.
-	 */
-	private static void addPizzaToppings(int pizzaID, Pizza p) throws SQLException {
-		String toppingSQL = """
-			INSERT INTO pizza_topping (pizza_PizzaID, topping_TopID, pizza_topping_IsDouble) 
-			VALUES (?, ?, ?)
-		""";
-		for (Topping t : p.getToppings()) {
-			try (PreparedStatement pstmt = conn.prepareStatement(toppingSQL)) {
-				pstmt.setInt(1, pizzaID);
-				pstmt.setInt(2, t.getTopID());
-				pstmt.setBoolean(3, t.getDoubled());
-				pstmt.executeUpdate();
-	
-				// Update the inventory based on topping usage
-				addToInventory(t.getTopID(), t.getDoubled() ? -2 : -1);
-			}
-		}
-	}
-	
-	/**
-	 * Adds discounts associated with the pizza to the database.
-	 */
-	private static void addPizzaDiscounts(int pizzaID, Pizza p) throws SQLException {
-		String discountSQL = "INSERT INTO pizza_discount (pizza_PizzaID, discount_DiscountID) VALUES (?, ?)";
-		for (Discount di : p.getDiscounts()) {
-			try (PreparedStatement pstmt = conn.prepareStatement(discountSQL)) {
-				pstmt.setInt(1, pizzaID);
-				pstmt.setInt(2, di.getDiscountID());
-				pstmt.executeUpdate();
-			}
-		}
-	}
+
 	
 	public static int addCustomer(Customer c) throws SQLException, IOException
 	{
