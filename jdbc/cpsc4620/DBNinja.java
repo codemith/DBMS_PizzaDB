@@ -71,41 +71,45 @@ public final class DBNinja {
 
 	public static void addOrder(Order o) throws SQLException, IOException
 	{
-		connect_to_db();
-
 		try {
 			connect_to_db();
 			if (conn != null) {
 				// Insert the order details into the ordertable
-				String insertOrderSQL = "INSERT INTO ordertable (customer_CustID, ordertable_OrderType, ordertable_OrderDateTime, ordertable_CustPrice, ordertable_BusPrice, ordertable_IsComplete) VALUES (?, ?, ?, ?, ?, ?)";
+				String insertOrderSQL = "INSERT INTO ordertable (customer_CustID, ordertable_OrderType, " +
+						"ordertable_OrderDateTime, ordertable_CustPrice, " +
+						"ordertable_BusPrice, ordertable_IsComplete) VALUES (?, ?, ?, ?, ?, ?)";
 				PreparedStatement pstmt = conn.prepareStatement(insertOrderSQL, Statement.RETURN_GENERATED_KEYS);
-		
+
 				if (o.getCustID() != -1) {
 					pstmt.setInt(1, o.getCustID());
 				} else {
 					pstmt.setObject(1, null);
 				}
-		
+
 				pstmt.setString(2, o.getOrderType());
 				pstmt.setString(3, o.getDate());
 				pstmt.setDouble(4, o.getCustPrice());
 				pstmt.setDouble(5, o.getBusPrice());
 				pstmt.setBoolean(6, o.getIsComplete());
-		
 				pstmt.executeUpdate();
-		
+
 				// Retrieve the generated Order ID
 				ResultSet generatedKeys = pstmt.getGeneratedKeys();
-				int orderId = (generatedKeys.next()) ? generatedKeys.getInt(1) : throw new SQLException("Order ID generation failed.");
-		
+				int orderId = -1;
+				if (generatedKeys.next()) {
+					orderId = generatedKeys.getInt(1);
+				} else {
+					throw new SQLException("Order ID generation failed.");
+				}
+
 				// Handle specific order type details
 				handleOrderTypeDetails(o, orderId);
-		
+
 				// Process associated pizzas and their details
 				for (Pizza pizza : o.getPizzaList()) {
 					addPizza(java.sql.Timestamp.valueOf(o.getDate()), orderId, pizza);
 				}
-		
+
 				// Process associated order discounts
 				for (Discount discount : o.getDiscountList()) {
 					String discountSQL = "INSERT INTO order_discount (ordertable_OrderID, discount_DiscountID) VALUES (?, ?)";
@@ -121,6 +125,60 @@ public final class DBNinja {
 				conn.close();
 			}
 		}
+
+
+/**
+ * Handles order-type-specific details (Delivery, Pickup, or Dine-In).
+ */
+		private static void handleOrderTypeDetails(Order o, int orderId) throws SQLException {
+		String orderType = o.getOrderType().toLowerCase();
+		switch (orderType) {
+			case "delivery": {
+				DeliveryOrder delivery = (DeliveryOrder) o;
+				String[] addressParts = delivery.getAddress().split("\t");
+				if (addressParts.length != 5) {
+					throw new SQLException("Invalid address format: " + delivery.getAddress());
+				}
+
+				String deliverySQL = "INSERT INTO delivery (ordertable_OrderID, delivery_HouseNum, delivery_Street, " +
+						"delivery_City, delivery_State, delivery_Zip, delivery_IsDelivered) VALUES (?, ?, ?, ?, ?, ?, ?)";
+				try (PreparedStatement pstmt = conn.prepareStatement(deliverySQL)) {
+					pstmt.setInt(1, orderId);
+					pstmt.setString(2, addressParts[0]); // House number
+					pstmt.setString(3, addressParts[1]); // Street
+					pstmt.setString(4, addressParts[2]); // City
+					pstmt.setString(5, addressParts[3]); // State
+					pstmt.setString(6, addressParts[4]); // Zip code
+					pstmt.setBoolean(7, delivery.getIsComplete());
+					pstmt.executeUpdate();
+				}
+				break;
+			}
+			case "pickup": {
+				String pickupSQL = "INSERT INTO pickup (ordertable_OrderID, pickup_IsPickedUp) VALUES (?, ?)";
+				try (PreparedStatement pstmt = conn.prepareStatement(pickupSQL)) {
+					pstmt.setInt(1, orderId);
+					pstmt.setBoolean(2, false);
+					pstmt.executeUpdate();
+				}
+				break;
+			}
+			case "dinein": {
+				DineinOrder dineIn = (DineinOrder) o;
+				String dineinSQL = "INSERT INTO dinein (ordertable_OrderID, dinein_TableNum) VALUES (?, ?)";
+				try (PreparedStatement pstmt = conn.prepareStatement(dineinSQL)) {
+					pstmt.setInt(1, orderId);
+					pstmt.setInt(2, dineIn.getTableNum());
+					pstmt.executeUpdate();
+				}
+				break;
+			}
+			default:
+				throw new SQLException("Unknown order type: " + orderType);
+		}
+	}
+
+
 		
 		/**
 		 * Handles order-type-specific details (Delivery, Pickup, or Dine-In).
