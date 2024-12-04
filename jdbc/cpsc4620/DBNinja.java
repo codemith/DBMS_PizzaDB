@@ -1380,8 +1380,8 @@ public final class DBNinja {
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-25s %-15s %-15s%n", "Topping", "Topping Count");
-		System.out.println("%-25s %-15s %-15s%n", "-------", "-------------");
+		System.out.printf("%-19s %-15s\n", "Topping", "Topping Count");
+		System.out.printf("%-19s %-15s\n", "-------", "-------------");
 
 		// Iterate over the results
 		while (rs.next()) {
@@ -1418,17 +1418,15 @@ public final class DBNinja {
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-10s %-15s %-15s %-15s %-15s%n", "Pizza Size", "Pizza Crust", "Profit", "Last Order Date");
-		System.out.println("%-10s %-15s %-15s %-15s %-15s%n", "----------", "-----------", "------", "---------------");
-
-		// Iterate over the results
+		System.out.printf("%-19s %-19s %-19s %-19s\n", "Pizza Size", "Pizza Crust", "Profit", "Last Order Date");
+		System.out.printf("%-19s %-19s %-19s %-19s\n", "----------", "-----------", "------", "---------------");		// Iterate over the results
 		while (rs.next()) {
 			String Size = rs.getString("Size");
 			String Crust = rs.getString("Crust");
 			double Profit = rs.getDouble("Profit");
 			String OrderMonth = rs.getString("OrderMonth");
 
-			System.out.printf("%-10s %-15s %-15s %-15d $%-14.2f%n", Size, Crust, Profit, OrderMonth);
+			System.out.printf("%-19s %-19s %-19.2f %-19s\n", Size, Crust, Profit, OrderMonth);
 		}
 
 		// Close resources
