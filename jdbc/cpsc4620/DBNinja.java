@@ -1374,7 +1374,7 @@ public final class DBNinja {
 
 		connect_to_db(); // Connect to the database
 
-		String query = "SELECT * FROM ToppingPopularity";
+		String query = "SELECT * FROM ToppingPopularity ORDER BY `ToppingCount` DESC, 'Topping' ASC";
 
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(query);
