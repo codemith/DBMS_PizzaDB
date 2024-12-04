@@ -446,14 +446,14 @@ public final class DBNinja {
 
 	public static ArrayList<Order> getOrders(int status) throws SQLException, IOException {
 		connect_to_db(); // Connect to the database
-		ArrayList<Order> orders = new ArrayList<Order>();
-		String query = "SELECT * FROM ordertable";
+		ArrayList<Order> orders = new ArrayList<>();
 
+		String query = "SELECT * FROM ordertable";
 		if (status == 1) {
 			query += " WHERE ordertable_isComplete = false";
 		} else if (status == 2) {
 			query += " WHERE ordertable_isComplete = true";
-		} else if (status != 3) {
+		} else if (status != 0) {
 			throw new IllegalArgumentException("Invalid status value: " + status);
 		}
 
@@ -476,22 +476,69 @@ public final class DBNinja {
 					custID = -1;
 				}
 
-				// Create order object
-				Order order;
+				Order order = null;
+
+				// Determine the order type and create the appropriate Order object
 				if (orderType.equals(dine_in)) {
-					order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, 0);
-				} else if (orderType.equals(delivery)) {
-					order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, "", false);
+					String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
+					try (PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery)) {
+						dineInStmt.setInt(1, orderID);
+						try (ResultSet dineInRS = dineInStmt.executeQuery()) {
+							int tableNum = 0; // Default table number
+							if (dineInRS.next()) {
+								tableNum = dineInRS.getInt("dinein_TableNum");
+							}
+							order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
+						}
+					}
 				} else if (orderType.equals(pickup)) {
-					order = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, false, isComplete);
-				} else {
-					continue;
+					String pickupQuery = "SELECT pickup_isPickedUp FROM pickup WHERE ordertable_OrderID = ?";
+					try (PreparedStatement pickupStmt = conn.prepareStatement(pickupQuery)) {
+						pickupStmt.setInt(1, orderID);
+						try (ResultSet pickupRS = pickupStmt.executeQuery()) {
+							boolean isPickedUp = false;
+							if (pickupRS.next()) {
+								isPickedUp = pickupRS.getBoolean("pickup_isPickedUp");
+							}
+							order = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, isPickedUp, isComplete);
+						}
+					}
+				} else if (orderType.equals(delivery)) {
+					String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
+					try (PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery)) {
+						deliveryStmt.setInt(1, orderID);
+						try (ResultSet deliveryRS = deliveryStmt.executeQuery()) {
+							String houseNum = "", street = "", city = "", state = "", zip = "";
+							boolean isDelivered = false;
+							if (deliveryRS.next()) {
+								houseNum = deliveryRS.getString("delivery_HouseNum");
+								street = deliveryRS.getString("delivery_Street");
+								city = deliveryRS.getString("delivery_City");
+								state = deliveryRS.getString("delivery_State");
+								zip = deliveryRS.getString("delivery_Zip");
+								isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
+							}
+							String address = houseNum + "\t" + street + "\t" + city + "\t" + state + "\t" + zip;
+							order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
+						}
+					}
 				}
 
-				orders.add(order);
+				if (order != null) {
+					// Populate the order with pizzas
+					ArrayList<Pizza> pizzas = getPizzas(order);
+					order.setPizzaList(pizzas);
+
+					// Populate the order with discounts
+					ArrayList<Discount> orderDiscounts = getDiscounts(order);
+					order.setDiscountList(orderDiscounts);
+
+					// Add the order to the list
+					orders.add(order);
+				}
 			}
 		} finally {
-			conn.close(); // Always close the connection
+			conn.close(); // Ensure the connection is closed
 		}
 
 		return orders;
