@@ -444,142 +444,55 @@ public final class DBNinja {
 	}
 
 
-
-	public static ArrayList<Order> getOrders(int status) throws SQLException, IOException
-	{
-		/*
-		 * Return an ArrayList of orders.
-		 * ...
-		 */
+	public static ArrayList<Order> getOrders(int status) throws SQLException, IOException {
 		connect_to_db(); // Connect to the database
 		ArrayList<Order> orders = new ArrayList<Order>();
-
 		String query = "SELECT * FROM ordertable";
-		boolean whereAdded = false;
 
 		if (status == 1) {
 			query += " WHERE ordertable_isComplete = false";
-			whereAdded = true;
 		} else if (status == 2) {
 			query += " WHERE ordertable_isComplete = true";
-			whereAdded = true;
-		} else if (status == 3) {
-			// No additional condition needed
-		} else {
-			// Invalid status value
-			conn.close();
+		} else if (status != 3) {
 			throw new IllegalArgumentException("Invalid status value: " + status);
 		}
 
-		// Order the results appropriately (e.g., by OrderID)
 		query += " ORDER BY ordertable_OrderID";
-		Statement stmt = conn.createStatement();
-		ResultSet rs = stmt.executeQuery(query);
 
-		while (rs.next()) {
-			int orderID = rs.getInt("ordertable_OrderID");
-			int custID = rs.getInt("customer_CustID");
-			String orderType = rs.getString("ordertable_OrderType");
-			String orderDate = rs.getString("ordertable_OrderDateTime");
-			double custPrice = rs.getDouble("ordertable_CustPrice");
-			double busPrice = rs.getDouble("ordertable_BusPrice");
-			boolean isComplete = rs.getBoolean("ordertable_isComplete");
+		try (PreparedStatement stmt = conn.prepareStatement(query);
+			 ResultSet rs = stmt.executeQuery()) {
 
-			// Handle null customer ID for dine-in orders
-			if (rs.wasNull()) {
-				custID = -1;
+			while (rs.next()) {
+				int orderID = rs.getInt("ordertable_OrderID");
+				int custID = rs.getInt("customer_CustID");
+				String orderType = rs.getString("ordertable_OrderType");
+				String orderDate = rs.getString("ordertable_OrderDateTime");
+				double custPrice = rs.getDouble("ordertable_CustPrice");
+				double busPrice = rs.getDouble("ordertable_BusPrice");
+				boolean isComplete = rs.getBoolean("ordertable_isComplete");
+
+				// Handle null customer ID
+				if (rs.wasNull()) {
+					custID = -1;
+				}
+
+				// Create order object
+				Order order;
+				if (orderType.equals(dine_in)) {
+					order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, 0);
+				} else if (orderType.equals(delivery)) {
+					order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, "", false);
+				} else if (orderType.equals(pickup)) {
+					order = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, false, isComplete);
+				} else {
+					continue;
+				}
+
+				orders.add(order);
 			}
-
-			Order order = null;
-
-			// Determine the order type and create the appropriate Order object
-			if (orderType.equals(dine_in)) {
-				// Dine-in order
-				// Fetch dine-in specific data
-				String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
-				PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery);
-				dineInStmt.setInt(1, orderID);
-				ResultSet dineInRS = dineInStmt.executeQuery();
-
-				int tableNum = 0;
-				if (dineInRS.next()) {
-					tableNum = dineInRS.getInt("dinein_TableNum");
-				}
-
-				order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
-
-				dineInRS.close();
-				dineInStmt.close();
-
-			} else if (orderType.equals(delivery)) {
-				// Delivery order
-				// Fetch delivery specific data
-				String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
-				PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery);
-				deliveryStmt.setInt(1, orderID);
-				ResultSet deliveryRS = deliveryStmt.executeQuery();
-
-				String houseNum = "";
-				String street = "";
-				String city = "";
-				String state = "";
-				String zip = "";
-				boolean isDelivered = false;
-
-				if (deliveryRS.next()) {
-					houseNum = deliveryRS.getString("delivery_HouseNum");
-					street = deliveryRS.getString("delivery_Street");
-					city = deliveryRS.getString("delivery_City");
-					state = deliveryRS.getString("delivery_State");
-					zip = deliveryRS.getString("delivery_Zip");
-					isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
-				}
-
-				String address = houseNum + "\t" + street + "\t" + city + "\t" + state + "\t" + zip;
-
-				order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice,isComplete, address, isDelivered);
-
-				deliveryRS.close();
-				deliveryStmt.close();
-
-			} else if (orderType.equals(pickup)) {
-				// Pickup order
-				// Fetch pickup specific data
-				String pickupQuery = "SELECT pickup_isPickedUp FROM pickup WHERE ordertable_OrderID = ?";
-				PreparedStatement pickupStmt = conn.prepareStatement(pickupQuery);
-				pickupStmt.setInt(1, orderID);
-				ResultSet pickupRS = pickupStmt.executeQuery();
-
-				boolean isPickedUp = false;
-				if (pickupRS.next()) {
-					isPickedUp = pickupRS.getBoolean("pickup_isPickedUp");
-				}
-
-				order = new PickupOrder(orderID, custID, orderDate, custPrice, busPrice, isPickedUp, isComplete);
-
-				pickupRS.close();
-				pickupStmt.close();
-
-			} else {
-				// Unknown order type
-				continue;
-			}
-			// Populate the order with pizzas
-			ArrayList<Pizza> pizzas = getPizzas(order);
-			order.setPizzaList(pizzas);
-
-			// Populate the order with discounts
-			ArrayList<Discount> orderDiscounts = getDiscounts(order);
-			order.setDiscountList(orderDiscounts);
-
-			// Add the order to the list
-			orders.add(order);
+		} finally {
+			conn.close(); // Always close the connection
 		}
-
-		// Close resources
-		rs.close();
-		stmt.close();
-		conn.close();
 
 		return orders;
 	}
