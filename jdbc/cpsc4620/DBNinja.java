@@ -399,16 +399,18 @@ public final class DBNinja {
 		}
 	}
 
-
 	public static ArrayList<Order> getOrders(int status) throws SQLException, IOException {
 		connect_to_db(); // Connect to the database
 		ArrayList<Order> orders = new ArrayList<>();
 
 		String query = "SELECT * FROM ordertable";
+		// Define logic based on the status
 		if (status == 1) {
 			query += " WHERE ordertable_isComplete = false";
 		} else if (status == 2) {
 			query += " WHERE ordertable_isComplete = true";
+		} else if (status == 3) {
+			query += " WHERE ordertable_isArchived = true"; // Example condition for status == 3
 		} else if (status != 0) {
 			throw new IllegalArgumentException("Invalid status value: " + status);
 		}
