@@ -77,12 +77,7 @@ public final class DBNinja {
 			connect_to_db();
 			if (conn != null) {
 				// Insert the order details into the ordertable
-				String insertOrderSQL = """
-					INSERT INTO ordertable 
-					(customer_CustID, ordertable_OrderType, ordertable_OrderDateTime, 
-					 ordertable_CustPrice, ordertable_BusPrice, ordertable_IsComplete)
-					VALUES (?, ?, ?, ?, ?, ?)
-				""";
+				String insertOrderSQL = "INSERT INTO ordertable (customer_CustID, ordertable_OrderType, ordertable_OrderDateTime, ordertable_CustPrice, ordertable_BusPrice, ordertable_IsComplete) VALUES (?, ?, ?, ?, ?, ?)";
 				PreparedStatement pstmt = conn.prepareStatement(insertOrderSQL, Statement.RETURN_GENERATED_KEYS);
 		
 				if (o.getCustID() != -1) {
