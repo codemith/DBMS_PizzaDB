@@ -75,9 +75,7 @@ public final class DBNinja {
 			connect_to_db();
 			if (conn != null) {
 				// Insert the order details into the ordertable
-				String insertOrderSQL = "INSERT INTO ordertable (customer_CustID, ordertable_OrderType, " +
-						"ordertable_OrderDateTime, ordertable_CustPrice, " +
-						"ordertable_BusPrice, ordertable_IsComplete) VALUES (?, ?, ?, ?, ?, ?)";
+				String insertOrderSQL = "INSERT INTO ordertable (customer_CustID, ordertable_OrderType, ordertable_OrderDateTime, ordertable_CustPrice, ordertable_BusPrice, ordertable_IsComplete) VALUES (?, ?, ?, ?, ?, ?)";
 				PreparedStatement pstmt = conn.prepareStatement(insertOrderSQL, Statement.RETURN_GENERATED_KEYS);
 
 				if (o.getCustID() != -1) {
@@ -140,8 +138,7 @@ public final class DBNinja {
 					throw new SQLException("Invalid address format: " + delivery.getAddress());
 				}
 
-				String deliverySQL = "INSERT INTO delivery (ordertable_OrderID, delivery_HouseNum, delivery_Street, " +
-						"delivery_City, delivery_State, delivery_Zip, delivery_IsDelivered) VALUES (?, ?, ?, ?, ?, ?, ?)";
+				String deliverySQL = "INSERT INTO delivery (ordertable_OrderID, delivery_HouseNum, delivery_Street, delivery_City, delivery_State, delivery_Zip, delivery_IsDelivered) VALUES (?, ?, ?, ?, ?, ?, ?)";
 				try (PreparedStatement pstmt = conn.prepareStatement(deliverySQL)) {
 					pstmt.setInt(1, orderId);
 					pstmt.setString(2, addressParts[0]); // House number
@@ -193,11 +190,7 @@ public final class DBNinja {
 						throw new SQLException("Invalid address format: " + delivery.getAddress());
 					}
 		
-					String deliverySQL = """
-						INSERT INTO delivery (ordertable_OrderID, delivery_HouseNum, delivery_Street, 
-											  delivery_City, delivery_State, delivery_Zip, delivery_IsDelivered)
-						VALUES (?, ?, ?, ?, ?, ?, ?)
-					""";
+					String deliverySQL = " INSERT INTO delivery (ordertable_OrderID, delivery_HouseNum, delivery_Street, delivery_City, delivery_State, delivery_Zip, delivery_IsDelivered) VALUES (?, ?, ?, ?, ?, ?, ?) ";
 					try (PreparedStatement pstmt = conn.prepareStatement(deliverySQL)) {
 						pstmt.setInt(1, orderId);
 						pstmt.setString(2, addressParts[0]); // House number
