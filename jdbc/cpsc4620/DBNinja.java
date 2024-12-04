@@ -496,20 +496,31 @@ public final class DBNinja {
 			if (orderType.equals(dine_in)) {
 				// Dine-in order
 				// Fetch dine-in specific data
-				String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
-				PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery);
-				dineInStmt.setInt(1, orderID);
-				ResultSet dineInRS = dineInStmt.executeQuery();
+				try {
+					connect_to_db()
+					if (conn != null) {
+						String dineInQuery = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
+						PreparedStatement dineInStmt = conn.prepareStatement(dineInQuery);
+						dineInStmt.setInt(1, orderID);
+						ResultSet dineInRS = dineInStmt.executeQuery();
+						int tableNum = 0;
+						if (dineInRS.next()) {s
+							tableNum = dineInRS.getInt("dinein_TableNum");
+						}
+						order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
+						dineInRS.close();
+						dineInStmt.close();
+					}
 
-				int tableNum = 0;
-				if (dineInRS.next()) {
-					tableNum = dineInRS.getInt("dinein_TableNum");
+				}
+				finally {
+					if (conn != null) {
+						conn.close();
+					}
 				}
 
-				order = new DineinOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, tableNum);
 
-				dineInRS.close();
-				dineInStmt.close();
+
 
 			} else if (orderType.equals(delivery)) {
 				// Delivery order
