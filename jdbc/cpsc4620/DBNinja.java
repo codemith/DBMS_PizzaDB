@@ -409,13 +409,11 @@ public final class DBNinja {
 			query += " WHERE ordertable_isComplete = false";
 		} else if (status == 2) {
 			query += " WHERE ordertable_isComplete = true";
-		} else if (status == 3) {
-			query += " WHERE ordertable_isArchived = true"; // Example condition for status == 3
 		} else if (status != 0) {
 			throw new IllegalArgumentException("Invalid status value: " + status);
 		}
 
-		query += " ORDER BY ordertable_OrderID";
+		query += " ORDER BY ordertable_OrderDateTime";
 
 		try (PreparedStatement stmt = conn.prepareStatement(query);
 			 ResultSet rs = stmt.executeQuery()) {
@@ -1376,14 +1374,14 @@ public final class DBNinja {
 
 		connect_to_db(); // Connect to the database
 
-		String query = "SELECT * FROM ToppingPopularity ORDER BY topping_TopName";
+		String query = "SELECT * FROM ToppingPopularity";
 
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
 		System.out.printf("%-25s %-15s %-15s%n", "Topping", "Topping Count");
-		System.out.println("---------------------------------------------------------------");
+		System.out.println("%-25s %-15s %-15s%n", "-------", "-------------");
 
 		// Iterate over the results
 		while (rs.next()) {
@@ -1414,14 +1412,14 @@ public final class DBNinja {
 
 		connect_to_db(); // Connect to the database
 
-		String query = "SELECT * FROM ProfitByPizza ORDER BY Profit DESC";
+		String query = "SELECT * FROM ProfitByPizza";
 
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
 		System.out.printf("%-10s %-15s %-15s %-15s %-15s%n", "Pizza Size", "Pizza Crust", "Profit", "Last Order Date");
-		System.out.println("--------------------------------------------------------------------------");
+		System.out.println("%-10s %-15s %-15s %-15s %-15s%n", "----------", "-----------", "------", "---------------");
 
 		// Iterate over the results
 		while (rs.next()) {
@@ -1455,15 +1453,14 @@ public final class DBNinja {
 
 		connect_to_db(); // Connect to the database
 
-		String query = "SELECT * FROM ProfitByOrderType ORDER BY Profit DESC";
+		String query = "SELECT * FROM ProfitByOrderType";
 
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-20s %-15s %-20s %-20s %-15s%n",
-				"Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
-		System.out.println("-----------------------------------------------------------------------------------------------");
+		System.out.printf("%-20s %-15s %-20s %-20s %-15s%n", "Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
+		System.out.println("%-20s %-15s %-20s %-20s %-15s\n", "-------------", "-----------", "-----------------", "----------------", "------");
 
 		// Iterate over the results
 		while (rs.next()) {
