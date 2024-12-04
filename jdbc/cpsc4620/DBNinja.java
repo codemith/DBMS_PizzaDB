@@ -1457,8 +1457,10 @@ public final class DBNinja {
 		ResultSet rs = stmt.executeQuery(query);
 
 		// Print the header
-		System.out.printf("%-19s %-19s %-19s %-19s %-19s\n", "Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
-		System.out.printf("%-19s %-19s %-19s %-19s %-19s\n", "-------------", "-----------", "-----------------", "----------------", "------");
+		System.out.printf("%-19s %-19s %-19s %-19s %-19s\n",
+				"Customer Type", "Order Month", "Total Order Price", "Total Order Cost", "Profit");
+		System.out.printf("%-19s %-19s %-19s %-19s %-19s\n",
+				"-------------", "-----------", "-----------------", "----------------", "------");
 
 		// Iterate over the results
 		while (rs.next()) {
@@ -1469,8 +1471,8 @@ public final class DBNinja {
 			double profit = rs.getDouble("Profit"); // Assuming 'Profit' exists in the DB
 
 			// Print each row with properly formatted values
-			System.out.printf("%-19s %-19s %-19.2f %-19.2f %-19.2f\n", customerType == null ? "" : customerType, OrderMonth, TotalOrderPrice, TotalOrderCost, profit);
-			customerType == null ? "" : customerType, // Handle null values for customerType
+			System.out.printf("%-19s %-19s %-19.2f %-19.2f %-19.2f\n",
+					customerType == null ? "" : customerType,
 					orderMonth,
 					totalOrderPrice,
 					totalOrderCost,
