@@ -69,8 +69,9 @@ SET @CurPizzaID = LAST_INSERT_ID();
 
 INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 1),
 (@CurPizzaID, 1, 0),
-(@CurPizzaID, 2, 0),
-(@CurPizzaID, 3);
+ (@CurPizzaID, 2, 0);
+
+INSERT INTO pizza_discount VALUES (@CurPizzaID, 3);
 
 COMMIT;
 
@@ -93,8 +94,9 @@ INSERT INTO pizza_topping VALUES (@CurPizzaID, 15, 0),
 (@CurPizzaID, 9, 0),
 (@CurPizzaID, 7, 0),
 (@CurPizzaID, 8, 0),
-(@CurPizzaID, 12, 0),
-(@CurPizzaID, 4);
+(@CurPizzaID, 12, 0);
+
+INSERT INTO pizza_discount VALUES (@CurPizzaID, 4);
 
 INSERT INTO pizza (pizza_Size, pizza_CrustType, pizza_PizzaState, pizza_PizzaDate, pizza_CustPrice, pizza_BusPrice, ordertable_OrderID)
 VALUES ('Small', 'Original', 'completed', '2024-04-03 12:05:00', 6.93, 1.40, @CurOrderID);
@@ -103,8 +105,9 @@ SET @CurPizzaID = LAST_INSERT_ID();
 
 INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 0),
 (@CurPizzaID, 4, 0),
-(@CurPizzaID, 12, 0),
-(@CurOrderID, 2);
+(@CurPizzaID, 12, 0);
+
+INSERT INTO order_discount VALUES (@CurOrderID, 2);
 
 COMMIT;
 
@@ -126,21 +129,21 @@ VALUES ('Large', 'Original', 'completed', '2024-03-03 21:30:00', 14.88, 3.30, @C
 
 SET @CurPizzaID = LAST_INSERT_ID();
 
+INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 0),(@CurPizzaID, 1, 0);
+
+INSERT INTO pizza (pizza_Size, pizza_CrustType, pizza_PizzaState, pizza_PizzaDate, pizza_CustPrice, pizza_BusPrice, ordertable_OrderID)
+VALUES ('Large', 'Original', 'completed', '2024-03-03 21:30:00', 14.88, 3.30, @CurOrderID);
+
+SET @CurPizzaID = LAST_INSERT_ID();
+
+INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 0),(@CurPizzaID, 1, 0);
+
+INSERT INTO pizza (pizza_Size, pizza_CrustType, pizza_PizzaState, pizza_PizzaDate, pizza_CustPrice, pizza_BusPrice, ordertable_OrderID)
+VALUES ('Large', 'Original', 'completed', '2024-03-03 21:30:00', 14.88, 3.30, @CurOrderID);
+
+SET @CurPizzaID = LAST_INSERT_ID();
+
 INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 0), (@CurPizzaID, 1, 0);
-
-INSERT INTO pizza (pizza_Size, pizza_CrustType, pizza_PizzaState, pizza_PizzaDate, pizza_CustPrice, pizza_BusPrice, ordertable_OrderID)
-VALUES ('Large', 'Original', 'completed', '2024-03-03 21:30:00', 14.88, 3.30, @CurOrderID);
-
-SET @CurPizzaID = LAST_INSERT_ID();
-
-INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 0),(@CurPizzaID, 1, 0);
-
-INSERT INTO pizza (pizza_Size, pizza_CrustType, pizza_PizzaState, pizza_PizzaDate, pizza_CustPrice, pizza_BusPrice, ordertable_OrderID)
-VALUES ('Large', 'Original', 'completed', '2024-03-03 21:30:00', 14.88, 3.30, @CurOrderID);
-
-SET @CurPizzaID = LAST_INSERT_ID();
-
-INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 0),(@CurPizzaID, 1, 0);
 
 INSERT INTO pizza (pizza_Size, pizza_CrustType, pizza_PizzaState, pizza_PizzaDate, pizza_CustPrice, pizza_BusPrice, ordertable_OrderID)
 VALUES ('Large', 'Original', 'completed', '2024-03-03 21:30:00', 14.88, 3.30, @CurOrderID);
@@ -237,8 +240,9 @@ INSERT INTO pizza_topping VALUES (@CurPizzaID, 5, 0),
 (@CurPizzaID, 7, 0),
 (@CurPizzaID, 8, 0),
 (@CurPizzaID, 9, 0),
-(@CurPizzaID, 16, 0),
-(@CurPizzaID, 4);
+(@CurPizzaID, 16, 0);
+
+INSERT INTO pizza_discount VALUES (@CurPizzaID, 4);
 
 COMMIT;
 
@@ -297,8 +301,9 @@ VALUES ('Large', 'Thin', 'completed', '2024-04-13 20:32:00', 19.25, 3.25, @CurOr
 
 SET @CurPizzaID = LAST_INSERT_ID();
 
-INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 0),
-(@CurPizzaID, 1, 1);
+INSERT INTO pizza_topping VALUES (@CurPizzaID, 13, 0), (@CurPizzaID, 1, 1);
 
 INSERT INTO order_discount VALUES (@CurOrderID, 1);
+
+
 COMMIT;
