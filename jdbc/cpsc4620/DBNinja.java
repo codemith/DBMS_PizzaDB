@@ -715,33 +715,41 @@ public final class DBNinja {
 			} else if (orderType.equals(delivery)) {
 				// Delivery order
 				// Fetch delivery specific data
-				String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
-				PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery);
-				deliveryStmt.setInt(1, orderID);
-				ResultSet deliveryRS = deliveryStmt.executeQuery();
+				try{
+					connect_to_db();
+					if (conn != null) {
+						String deliveryQuery = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
+						PreparedStatement deliveryStmt = conn.prepareStatement(deliveryQuery);
+						deliveryStmt.setInt(1, orderID);
+						ResultSet deliveryRS = deliveryStmt.executeQuery();
 
-				String houseNum = "";
-				String street = "";
-				String city = "";
-				String state = "";
-				String zip = "";
-				boolean isDelivered = false;
+						String houseNum = "";
+						String street = "";
+						String city = "";
+						String state = "";
+						String zip = "";
+						boolean isDelivered = false;
 
-				if (deliveryRS.next()) {
-					houseNum = deliveryRS.getString("delivery_HouseNum");
-					street = deliveryRS.getString("delivery_Street");
-					city = deliveryRS.getString("delivery_City");
-					state = deliveryRS.getString("delivery_State");
-					zip = deliveryRS.getString("delivery_Zip");
-					isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
+						if (deliveryRS.next()) {
+							houseNum = deliveryRS.getString("delivery_HouseNum");
+							street = deliveryRS.getString("delivery_Street");
+							city = deliveryRS.getString("delivery_City");
+							state = deliveryRS.getString("delivery_State");
+							zip = deliveryRS.getString("delivery_Zip");
+							isDelivered = deliveryRS.getBoolean("delivery_IsDelivered");
+						}
+
+						String address = houseNum + "\t" + street + "\t" + city + "\t" + state + "\t" + zip;
+
+						order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
+
+						deliveryRS.close();
+						deliveryStmt.close();
+					}
+				} finally {
+					conn.close();
 				}
 
-				String address = houseNum + "\t" + street + "\t" + city + "\t" + state + "\t" + zip;
-
-				order = new DeliveryOrder(orderID, custID, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
-
-				deliveryRS.close();
-				deliveryStmt.close();
 
 			} else if (orderType.equals(pickup)) {
 				// Pickup order
