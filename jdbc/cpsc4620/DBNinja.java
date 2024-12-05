@@ -178,6 +178,8 @@ public final class DBNinja {
 			}
 		}
 	}
+
+
 	public static int addPizza(java.util.Date d, int orderID, Pizza p) throws SQLException, IOException
 	{
 		/*
@@ -191,9 +193,11 @@ public final class DBNinja {
 		 * This method returns the id of the pizza just added.
 		 *
 		 */
+
 		try {
 			connect_to_db();
 			if(conn != null){
+				// 1. Insert pizza details
 				String pizzaSQL = "INSERT INTO pizza (ordertable_OrderID, pizza_PizzaState, pizza_PizzaDate, pizza_CrustType, pizza_Size, pizza_CustPrice, pizza_BusPrice) VALUES (?, ?, ?, ?, ?, ?, ?)";
 				PreparedStatement pstmt = conn.prepareStatement(pizzaSQL, Statement.RETURN_GENERATED_KEYS);
 				pstmt.setInt(1, orderID);
@@ -213,6 +217,7 @@ public final class DBNinja {
 					throw new SQLException("Failed to retrieve generated OrderID.");
 				}
 
+				// 2. Add toppings for this pizza
 				for (Topping t : p.getToppings()) {
 					try {
 						connect_to_db();
@@ -232,6 +237,7 @@ public final class DBNinja {
 					}
 				}
 
+				// 3. Add pizza discounts
 				for (Discount di : p.getDiscounts()) {
 					try {
 						connect_to_db();
@@ -247,6 +253,7 @@ public final class DBNinja {
 							conn.close();
 						}
 					}
+
 				}
 			}
 		} finally {
@@ -257,7 +264,8 @@ public final class DBNinja {
 		return p.getPizzaID();
 	}
 
-	
+
+
 	public static int addCustomer(Customer c) throws SQLException, IOException
 	{
 		/*
