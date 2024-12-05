@@ -456,54 +456,61 @@ public final class DBNinja {
 	private static Order getOrderDetails(int orderId, int custId, String orderType, String orderDate,
 										 double custPrice, double busPrice, boolean isComplete) throws SQLException {
 		Order order = null;
-
-		switch (orderType.toLowerCase()) {
-			case "delivery":
-				String queryDel = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
-				try (PreparedStatement pstmt = conn.prepareStatement(queryDel)) {
-					pstmt.setInt(1, orderId);
-					try (ResultSet rs = pstmt.executeQuery()) {
-						if (rs.next()) {
-							String address = rs.getString("delivery_HouseNum") + "\t" +
-									rs.getString("delivery_Street") + "\t" +
-									rs.getString("delivery_City") + "\t" +
-									rs.getString("delivery_State") + "\t" +
-									rs.getString("delivery_Zip");
-							boolean isDelivered = rs.getBoolean("delivery_IsDelivered");
-							order = new DeliveryOrder(orderId, custId, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
+		try {
+			connect_to_db();
+			if (conn != null) {
+				switch (orderType.toLowerCase()) {
+					case "delivery":
+						String queryDel = "SELECT * FROM delivery WHERE ordertable_OrderID = ?";
+						try (PreparedStatement pstmt = conn.prepareStatement(queryDel)) {
+							pstmt.setInt(1, orderId);
+							try (ResultSet rs = pstmt.executeQuery()) {
+								if (rs.next()) {
+									String address = rs.getString("delivery_HouseNum") + "\t" +
+											rs.getString("delivery_Street") + "\t" +
+											rs.getString("delivery_City") + "\t" +
+											rs.getString("delivery_State") + "\t" +
+											rs.getString("delivery_Zip");
+									boolean isDelivered = rs.getBoolean("delivery_IsDelivered");
+									order = new DeliveryOrder(orderId, custId, orderDate, custPrice, busPrice, isComplete, address, isDelivered);
+								}
+							}
 						}
-					}
-				}
-				break;
+						break;
 
-			case "pickup":
-				String queryPickup = "SELECT pickup_IsPickedUp FROM pickup WHERE ordertable_OrderID = ?";
-				try (PreparedStatement pstmt = conn.prepareStatement(queryPickup)) {
-					pstmt.setInt(1, orderId);
-					try (ResultSet rs = pstmt.executeQuery()) {
-						if (rs.next()) {
-							boolean isPickedUp = rs.getBoolean("pickup_IsPickedUp");
-							order = new PickupOrder(orderId, custId, orderDate, custPrice, busPrice, isComplete, isPickedUp);
+					case "pickup":
+						String queryPickup = "SELECT pickup_IsPickedUp FROM pickup WHERE ordertable_OrderID = ?";
+						try (PreparedStatement pstmt = conn.prepareStatement(queryPickup)) {
+							pstmt.setInt(1, orderId);
+							try (ResultSet rs = pstmt.executeQuery()) {
+								if (rs.next()) {
+									boolean isPickedUp = rs.getBoolean("pickup_IsPickedUp");
+									order = new PickupOrder(orderId, custId, orderDate, custPrice, busPrice, isComplete, isPickedUp);
+								}
+							}
 						}
-					}
-				}
-				break;
+						break;
 
-			case "dinein":
-				String queryDinein = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
-				try (PreparedStatement pstmt = conn.prepareStatement(queryDinein)) {
-					pstmt.setInt(1, orderId);
-					try (ResultSet rs = pstmt.executeQuery()) {
-						if (rs.next()) {
-							int tableNum = rs.getInt("dinein_TableNum");
-							order = new DineinOrder(orderId, custId, orderDate, custPrice, busPrice, isComplete, tableNum);
+					case "dinein":
+						String queryDinein = "SELECT dinein_TableNum FROM dinein WHERE ordertable_OrderID = ?";
+						try (PreparedStatement pstmt = conn.prepareStatement(queryDinein)) {
+							pstmt.setInt(1, orderId);
+							try (ResultSet rs = pstmt.executeQuery()) {
+								if (rs.next()) {
+									int tableNum = rs.getInt("dinein_TableNum");
+									order = new DineinOrder(orderId, custId, orderDate, custPrice, busPrice, isComplete, tableNum);
+								}
+							}
 						}
-					}
-				}
-				break;
+						break;
 
-			default:
-				throw new SQLException("Unknown order type: " + orderType);
+					default:
+						throw new SQLException("Unknown order type: " + orderType);
+				}
+			}
+			finally {
+				if (conn != null) conn.close();
+			}
 		}
 
 		return order;
