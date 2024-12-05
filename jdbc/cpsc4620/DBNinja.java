@@ -221,6 +221,8 @@ public final class DBNinja {
 
 				// 2. Add toppings for this pizza
 				for (Topping t : p.getToppings()) {
+					String size = p.getSize();
+					boolean isDouble = t.getDoubled();
 					try {
 						connect_to_db();
 						if(conn != null){
@@ -228,15 +230,34 @@ public final class DBNinja {
 							pstmt = conn.prepareStatement(toppingSQL);
 							pstmt.setInt(1, generatedPizzaID);
 							pstmt.setInt(2, t.getTopID());
-							pstmt.setBoolean(3, t.getDoubled());
+							pstmt.setBoolean(3, isDouble);
 							pstmt.executeUpdate();
-							addToInventory(t.getTopID(),t.getDoubled() ? -2: -1);
+
 						}
 					} finally {
 						if (conn != null) {
 							conn.close();
 						}
 					}
+					double toppingAmt = 0;
+					Topping topping = findToppingByName(t.getTopName());
+					switch (size){
+						case "Large":
+							toppingAmt = Math.ceil(topping.getLgAMT());
+							break;
+						case "Medium":
+							toppingAmt = Math.ceil(topping.getMedAMT());
+							break;
+						case "Small":
+							toppingAmt = Math.ceil(topping.getSmallAMT());
+							break;
+						case "XLarge":
+							toppingAmt = Math.ceil(topping.getXLAMT());
+							break;
+						default:
+							toppingAmt = 1;
+					}
+					addToInventory(t.getTopID(), isDouble ? (-2*toppingAmt): (-1*toppingAmt));
 				}
 
 				// 3. Add pizza discounts
@@ -1144,13 +1165,13 @@ public final class DBNinja {
 
 		int rowsAffected = stmt.executeUpdate();
 
-		if (rowsAffected == 0) {
+		/*if (rowsAffected == 0) {
 			// No rows updated, possibly invalid toppingID
 			System.out.println("No topping found with TopID: " + toppingID);
 		} else {
 			System.out.println("Inventory updated successfully for TopID: " + toppingID);
 		}
-
+		*/
 		// Close resources
 		stmt.close();
 		conn.close();
