@@ -13,6 +13,42 @@ BEGIN
     INSERT INTO ordertable (customer_CustID, ordertable_OrderType, ordertable_OrderDateTime, ordertable_CustPrice, ordertable_BusPrice, ordertable_isComplete)
     VALUES (CUSTID, ORDERTYPE, ORDERDATETIME, CUSTPRICE, BUSPRICE, ORDERCOMPLETE);
 end //
+
+-- SF
+DELIMITER //
+
+CREATE FUNCTION CalculateOrderCostt (
+    p_OrderID INT
+) RETURNS DECIMAL(10,2)
+READS SQL DATA
+BEGIN
+    DECLARE totalCost DECIMAL(10,2);
+    SET totalCost = (
+        SELECT SUM(pizza_CustPrice)
+        FROM pizza
+        WHERE ordertable_OrderID = p_OrderID
+    );
+    RETURN totalCost;
+END //
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE FUNCTION GetCustomerOrderCountt(customer_id INT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE order_count INT;
+    SELECT COUNT(*)
+    INTO order_count
+    FROM ordertable
+    WHERE customer_CustID = customer_id;
+    RETURN order_count;
+END //
+
+DELIMITER ;
+
 -- funct 1
 CREATE FUNCTION CUSTTOTAL(ORDERID INT) RETURNS DECIMAL(5,2)
 DETERMINISTIC
