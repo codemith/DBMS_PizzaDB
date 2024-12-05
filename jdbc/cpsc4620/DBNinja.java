@@ -509,7 +509,7 @@ public final class DBNinja {
 				}
 
 			}
-		} finally {
+		} catch (IOException e) {return false;} finally {
 			if (conn != null) {conn.close();}
 		}
 		return order;
