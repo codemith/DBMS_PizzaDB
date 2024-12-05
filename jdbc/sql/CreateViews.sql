@@ -2,27 +2,19 @@ USE PizzaDB;
 
 -- View ToppingPopularity
 CREATE VIEW ToppingPopularity AS
-    SELECT 
-        t.topping_TopName AS Topping,
-        CAST(
-            SUM(
-                CASE pizza_topping.pizza_topping_IsDouble
-                    WHEN 1 THEN 2
-                    WHEN 0 THEN 1
-                    ELSE 0
-                END
-            ) AS DECIMAL(33, 0)
-        ) AS ToppingCount
-    FROM 
-        topping t
-    LEFT JOIN 
-        pizza_topping pt ON t.topping_TopID = pt.topping_TopID
-    GROUP BY 
-        t.topping_TopName
-    ORDER BY 
-        ToppingCount DESC,
-        Topping;
-
+    SELECT topping_TopName AS Topping,
+           CAST(
+                   SUM(
+                           CASE
+                               WHEN pizza_topping_IsDouble = 1 THEN 2
+                               WHEN pizza_topping_IsDouble = 0 THEN 1
+                               ELSE 0
+                           END
+                   ) AS DECIMAL (33, 0)
+           ) AS ToppingCount
+    FROM topping LEFT JOIN pizza_topping ON topping.topping_TopID = pizza_topping.topping_TopID
+    GROUP BY topping_TopName
+    ORDER BY `ToppingCount` DESC, `Topping`;
 
 -- View ProfitByPizza
 CREATE VIEW ProfitByPizza AS
