@@ -1,111 +1,134 @@
-
-DROP SCHEMA IF EXISTS PizzaDB;
-CREATE SCHEMA PizzaDB;
+-- Create the database
+DROP DATABASE IF EXISTS PizzaDB;
+CREATE DATABASE PizzaDB;
 USE PizzaDB;
 
-CREATE TABLE customer (
-    customer_CustID INT PRIMARY KEY AUTO_INCREMENT ,
-    customer_FName VARCHAR(30) NOT NULL ,
-    customer_LName VARCHAR(30) NOT NULL ,
-    customer_PhoneNum VARCHAR(30) NOT NULL
+-- Create topping table
+CREATE TABLE topping (
+    topping_TopID INT AUTO_INCREMENT,
+    topping_TopName VARCHAR(30) NOT NULL,
+    topping_SmallAMT DECIMAL(5,2) NOT NULL,
+    topping_MedAMT DECIMAL(5,2) NOT NULL,
+    topping_LgAMT DECIMAL(5,2) NOT NULL,
+    topping_XLAMT DECIMAL(5,2) NOT NULL,
+    topping_CustPrice DECIMAL(5,2) NOT NULL,
+    topping_BusPrice DECIMAL(5,2) NOT NULL,
+    topping_MinINVT INT NOT NULL,
+    topping_CurINVT INT NOT NULL,
+    PRIMARY KEY (topping_TopID)
 );
 
+-- Create baseprice table
+CREATE TABLE baseprice (
+    baseprice_Size VARCHAR(30),
+    baseprice_CrustType VARCHAR(30),
+    baseprice_CustPrice DECIMAL(5,2) NOT NULL,
+    baseprice_BusPrice DECIMAL(5,2) NOT NULL,
+    PRIMARY KEY (baseprice_CrustType, baseprice_Size)
+);
+
+-- Create customer table
+CREATE TABLE customer (
+    customer_CustID INT AUTO_INCREMENT,
+    customer_FName VARCHAR(30) NOT NULL,
+    customer_LName VARCHAR(30) NOT NULL,
+    customer_PhoneNum VARCHAR(30) NOT NULL,
+    PRIMARY KEY (customer_CustID)
+);
+
+-- Create discount table
+CREATE TABLE discount (
+    discount_DiscountID INT AUTO_INCREMENT,
+    discount_DiscountName VARCHAR(30) NOT NULL,
+    discount_Amount DECIMAL(5,2) NOT NULL,
+    discount_IsPercent TINYINT NOT NULL,
+    PRIMARY KEY (discount_DiscountID)
+);
+
+-- Create ordertable
 CREATE TABLE ordertable (
-    ordertable_OrderID INT PRIMARY KEY AUTO_INCREMENT,
-    customer_CustID INT ,
-    ordertable_OrderType VARCHAR(30) NOT NULL ,
-    ordertable_OrderDateTime DATETIME NOT NULL ,
-    ordertable_CustPrice DECIMAL(5,2) NOT NULL ,
-    ordertable_BusPrice DECIMAL(5,2) NOT NULL ,
-    ordertable_isComplete TINYINT(1) DEFAULT 0,
+    ordertable_OrderID INT AUTO_INCREMENT,
+    customer_CustID INT,
+    ordertable_OrderType VARCHAR(30) NOT NULL,
+    ordertable_OrderDateTime DATETIME NOT NULL,
+    ordertable_CustPrice DECIMAL(5,2) NOT NULL,
+    ordertable_BusPrice DECIMAL(5,2) NOT NULL,
+    ordertable_IsComplete TINYINT(1) DEFAULT 0,
+    PRIMARY KEY (ordertable_OrderID),
     FOREIGN KEY (customer_CustID) REFERENCES customer(customer_CustID)
 );
 
-CREATE TABLE pickup (
-    ordertable_OrderID INT PRIMARY KEY ,
-    pickup_IsPickedUp TINYINT NOT NULL DEFAULT 0,
-    CONSTRAINT pickup_fk FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID) ON DELETE CASCADE
-);
-
-CREATE TABLE delivery (
-    ordertable_OrderID INT PRIMARY KEY ,
-    delivery_HouseNum INT NOT NULL ,
-    delivery_Street VARCHAR(30) NOT NULL ,
-    delivery_City VARCHAR(30) NOT NULL ,
-    delivery_State VARCHAR(2) NOT NULL ,
-    delivery_Zip INT NOT NULL ,
-    delivery_IsDelivered TINYINT NOT NULL DEFAULT 0 ,
-    CONSTRAINT delivery_fk FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID) ON DELETE CASCADE
-);
-
-CREATE TABLE dinein (
-    ordertable_OrderID INT PRIMARY KEY ,
-    dinein_TableNum INT NOT NULL ,
-    CONSTRAINT dinein_fk FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID) ON DELETE CASCADE
-);
-
-CREATE TABLE baseprice (
-    baseprice_Size VARCHAR(30) NOT NULL ,
-    baseprice_CrustType VARCHAR(30) NOT NULL ,
-    baseprice_CustPrice DECIMAL(5,2) NOT NULL ,
-    baseprice_BusPrice DECIMAL(5,2) NOT NULL ,
-    CONSTRAINT baseprice_pk PRIMARY KEY (baseprice_CrustType, baseprice_Size)
-);
-
+-- Create pizza table
 CREATE TABLE pizza (
-    pizza_PizzaID INT PRIMARY KEY AUTO_INCREMENT ,
-    pizza_Size VARCHAR(30) NOT NULL ,
-    pizza_CrustType VARCHAR(30) NOT NULL ,
-    pizza_PizzaState VARCHAR(30) NOT NULL ,
-    pizza_PizzaDate DATETIME NOT NULL ,
-    pizza_CustPrice DECIMAL(5,2) NOT NULL ,
-    pizza_BusPrice DECIMAL(5,2) NOT NULL ,
-    ordertable_OrderID INT NOT NULL ,
-    CONSTRAINT pizza_baseprice_fk FOREIGN KEY (pizza_CrustType, pizza_Size) REFERENCES baseprice(baseprice_CrustType, baseprice_Size) ,
-    CONSTRAINT pizza_ordertable_fk FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID) ON DELETE CASCADE
+    pizza_PizzaID INT AUTO_INCREMENT,
+    pizza_Size VARCHAR(30) NOT NULL,
+    pizza_CrustType VARCHAR(30) NOT NULL,
+    ordertable_OrderID INT,
+    pizza_PizzaState VARCHAR(30) NOT NULL,
+    pizza_PizzaDate DATETIME NOT NULL,
+    pizza_CustPrice DECIMAL(5,2) NOT NULL,
+    pizza_BusPrice DECIMAL(5,2) NOT NULL,
+    PRIMARY KEY (pizza_PizzaID),
+    FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID),
+    FOREIGN KEY (pizza_CrustType, pizza_Size)
+        REFERENCES PizzaDB.baseprice(baseprice_CrustType, baseprice_Size)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
 );
 
-CREATE TABLE topping (
-    topping_TopID INT PRIMARY KEY AUTO_INCREMENT ,
-    topping_TopName VARCHAR(30) NOT NULL ,
-    topping_SmallAMT DECIMAL(5,2) NOT NULL ,
-    topping_MedAMT DECIMAL(5,2) NOT NULL ,
-    topping_LgAMT DECIMAL(5,2) NOT NULL ,
-    topping_XLAMT DECIMAL(5,2) NOT NULL ,
-    topping_CustPrice DECIMAL(5,2) NOT NULL ,
-    topping_BusPrice DECIMAL(5,2) NOT NULL ,
-    topping_MinINVT INT NOT NULL ,
-    topping_CurINVT INT NOT NULL
-);
-
+-- Create pizza_topping bridge table
 CREATE TABLE pizza_topping (
-    pizza_PizzaID INT ,
-    topping_TopID INT ,
-    pizza_topping_IsDouble INT NOT NULL ,
-    CONSTRAINT pizza_topping_pk PRIMARY KEY (pizza_PizzaID, topping_TopID) ,
-    CONSTRAINT pizza_top_pizza_fk FOREIGN KEY (pizza_PizzaID) REFERENCES pizza(pizza_PizzaID) ,
-    CONSTRAINT pizza_top_topping_fk FOREIGN KEY (topping_TopID) REFERENCES topping(topping_TopID)
+    pizza_PizzaID INT NOT NULL ,
+    topping_TopID INT NOT NULL,
+    pizza_topping_IsDouble INT NOT NULL,
+    PRIMARY KEY (pizza_PizzaID, topping_TopID),
+    FOREIGN KEY (pizza_PizzaID) REFERENCES pizza(pizza_PizzaID),
+    FOREIGN KEY (topping_TopID) REFERENCES topping(topping_TopID)
 );
 
-CREATE TABLE discount (
-    discount_DiscountID INT PRIMARY KEY AUTO_INCREMENT ,
-    discount_DiscountName VARCHAR(30) NOT NULL ,
-    discount_Amount DECIMAL(5,2) NOT NULL ,
-    discount_IsPercent TINYINT NOT NULL
-);
-
+-- Create pizza_discount bridge table
 CREATE TABLE pizza_discount (
-    pizza_PizzaID INT ,
-    discount_DiscountID INT ,
-    CONSTRAINT pizza_discount_pk PRIMARY KEY (pizza_PizzaID, discount_DiscountID) ,
-    CONSTRAINT pizza_disc_pizza_fk FOREIGN KEY (pizza_PizzaID) REFERENCES pizza(pizza_PizzaID) ,
-    CONSTRAINT pizza_disc_discount_fk FOREIGN KEY (discount_DiscountID) REFERENCES discount(discount_DiscountID)
+    pizza_PizzaID INT,
+    discount_DiscountID INT,
+    PRIMARY KEY (pizza_PizzaID, discount_DiscountID),
+    FOREIGN KEY (pizza_PizzaID) REFERENCES pizza(pizza_PizzaID),
+    FOREIGN KEY (discount_DiscountID) REFERENCES discount(discount_DiscountID)
 );
 
+-- Create order_discount bridge table
 CREATE TABLE order_discount (
-    ordertable_OrderID INT ,
-    discount_DiscountID INT ,
-    CONSTRAINT order_discount_pk PRIMARY KEY (ordertable_OrderID, discount_DiscountID) ,
-    CONSTRAINT order_disc_order_fk FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID) ,
-    CONSTRAINT order_disc_discount_fk FOREIGN KEY (discount_DiscountID) REFERENCES discount(discount_DiscountID)
+    ordertable_OrderID INT,
+    discount_DiscountID INT,
+    PRIMARY KEY (ordertable_OrderID, discount_DiscountID),
+    FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID),
+    FOREIGN KEY (discount_DiscountID) REFERENCES discount(discount_DiscountID)
+);
+
+-- Create dinein table
+CREATE TABLE dinein (
+    ordertable_OrderID INT,
+    dinein_TableNum INT NOT NULL,
+    PRIMARY KEY (ordertable_OrderID),
+    FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID)
+);
+
+-- Create delivery table
+CREATE TABLE delivery (
+    ordertable_OrderID INT,
+    delivery_HouseNum INT NOT NULL,
+    delivery_Street VARCHAR(30) NOT NULL,
+    delivery_City VARCHAR(30) NOT NULL,
+    delivery_State VARCHAR(2) NOT NULL,
+    delivery_Zip INT NOT NULL,
+    delivery_IsDelivered TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (ordertable_OrderID),
+    FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID)
+);
+
+-- Create pickup table
+CREATE TABLE pickup (
+    ordertable_OrderID INT,
+    pickup_IsPickedUp TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (ordertable_OrderID),
+    FOREIGN KEY (ordertable_OrderID) REFERENCES ordertable(ordertable_OrderID)
 );
