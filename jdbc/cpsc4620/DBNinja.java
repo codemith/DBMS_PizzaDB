@@ -507,12 +507,11 @@ public final class DBNinja {
 					default:
 						throw new SQLException("Unknown order type: " + orderType);
 				}
-			}
-			finally {
-				if (conn != null) conn.close();
-			}
-		}
 
+			}
+		} finally {
+			if (conn != null) {conn.close();}
+		}
 		return order;
 	}
 
