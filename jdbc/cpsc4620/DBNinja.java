@@ -8,18 +8,18 @@ import java.util.*;
  * This file is where you will implement the methods needed to support this application.
  * You will write the code to retrieve and save information to the database and use that
  * information to build the various objects required by the applicaiton.
- * 
+ *
  * The class has several hard coded static variables used for the connection, you will need to
  * change those to your connection information
- * 
- * This class also has static string variables for pickup, delivery and dine-in. 
+ *
+ * This class also has static string variables for pickup, delivery and dine-in.
  * DO NOT change these constant values.
- * 
+ *
  * You can add any helper methods you need, but you must implement all the methods
  * in this class and use them to complete the project.  The autograder will rely on
  * these methods being implemented, so do not delete them or alter their method
  * signatures.
- * 
+ *
  * Make sure you properly open and close your DB connections in any method that
  * requires access to the DB.
  * Use the connect_to_db below to open your connection in DBConnector.
@@ -55,7 +55,7 @@ public final class DBNinja {
 	}
 
 
-	private static boolean connect_to_db() throws SQLException, IOException 
+	private static boolean connect_to_db() throws SQLException, IOException
 	{
 
 		try {
@@ -509,7 +509,7 @@ public final class DBNinja {
 				}
 
 			}
-		} catch (IOException e) {return false;} finally {
+		} catch (IOException e) {System.out.println("Error" + e);} finally {
 			if (conn != null) {conn.close();}
 		}
 		return order;
@@ -1500,10 +1500,10 @@ public final class DBNinja {
 		conn.close();
 	}
 
-	
-	
+
+
 	/*
-	 * These private methods help get the individual components of an SQL datetime object. 
+	 * These private methods help get the individual components of an SQL datetime object.
 	 * You're welcome to keep them or remove them....but they are usefull!
 	 */
 	private static int getYear(String date)// assumes date format 'YYYY-MM-DD HH:mm:ss'
